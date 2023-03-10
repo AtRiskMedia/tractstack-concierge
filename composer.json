@@ -1,0 +1,12 @@
+{
+    "require": {
+        "firebase/php-jwt": "^5.0",
+        "vlucas/phpdotenv": "^5.5",
+        "laudis/neo4j-php-client": "^2.8"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}
