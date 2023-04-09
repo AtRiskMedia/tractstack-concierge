@@ -336,19 +336,19 @@ if ($knownNewFingerprint && $neo4j_lead_id) {
 }
 
 // load heldBeliefs for this fingerprint_id
-if ( $fingerprint_id ) {
-    $belief_query = "SELECT c.object_name as title, c.object_id as slug, b.verb";
-    $belief_query .= " FROM " . $beliefs_table_name . " as b LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
-    $belief_query .= " b.fingerprint_id=:fingerprint";
-    $belief_stmt = $conn->prepare($belief_query);
-    $belief_stmt->bindParam(':fingerprint', $fingerprint_id);
-    if ($belief_stmt->execute()) {
-        $count = $belief_stmt->rowCount();
-        if ($count > 1) {
-		$rows = $belief_stmt->fetchAll(PDO::FETCH_NAMED);
-		$heldBeliefs = json_encode($rows);
-        } 
+if ($fingerprint_id) {
+  $belief_query = "SELECT c.object_name as title, c.object_id as slug, b.verb";
+  $belief_query .= " FROM " . $beliefs_table_name . " as b LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
+  $belief_query .= " b.fingerprint_id=:fingerprint";
+  $belief_stmt = $conn->prepare($belief_query);
+  $belief_stmt->bindParam(':fingerprint', $fingerprint_id);
+  if ($belief_stmt->execute()) {
+    $count = $belief_stmt->rowCount();
+    if ($count > 0) {
+      $rows = $belief_stmt->fetchAll(PDO::FETCH_NAMED);
+      $heldBeliefs = json_encode($rows);
     }
+  }
 }
 
 // now issue JWT
