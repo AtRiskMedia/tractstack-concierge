@@ -28,7 +28,6 @@ function processEventStream($jwt, $payload)
   $neo4j_corpus_ids = [];
   $sql_corpus_ids = [];
   $neo4j_merged_corpus_to_update_sql = [];
-  $neo4j_merged_heldbeliefs_to_update_sql = [];
 
   // first get neo4j id for visit
   if ($fingerprint_id && $visit_id) {
@@ -126,7 +125,6 @@ function processEventStream($jwt, $payload)
             $neo4j_object_id = neo4j_merge_belief($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
             $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "Belief", $node->parentId, $neo4j_object_id];
-            //$neo4j_merged_heldbeliefs_to_update_sql[$id] = [$node->title, $neo4j_object_id];
             break;
 
           case "H5P":
