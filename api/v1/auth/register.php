@@ -38,7 +38,6 @@ $valid_until = date('Y-m-d H:i:s', strtotime("now +14 days")); // life of refres
 $secret_key = SECRET_KEY;
 $auth = false;
 $firstname = false;
-$emailConflict = false;
 $knownNewFingerprint = false;
 $heldBeliefs = false;
 
@@ -60,7 +59,6 @@ $client = neo4j_connect();
 
 // get POST payload
 $data = json_decode(file_get_contents("php://input"));
-
 $fingerprint = isset($data->fingerprint) ? $data->fingerprint : false;
 $codeword = isset($data->codeword) ? $data->codeword : false;
 $email = isset($data->email) ? $data->email : false;
@@ -102,7 +100,7 @@ switch ($mode) {
     $pre_register_query .= " l.email=:email AND l.passwordHash=aes_encrypt(:codeword, Password(:secret)) LIMIT 1)";
     $pre_register_query .= " UNION";
     $pre_register_query .= " SELECT f.id as fingerprint_id,l.id as lead_id, first_name, f.merged as neo4j_fingerprint_id, l.merged as neo4j_lead_id,";
-    $pre_register_query .= " TO_BASE64(AES_ENCRYPT(:codeword,Password(:secret))) as codeword, TO_BASE64(AES_ENCRYPT(:email,Password(:secret))) as email";
+    $pre_register_query .= " '' as codeword, TO_BASE64(AES_ENCRYPT(:email,Password(:secret))) as email";
     $pre_register_query .= " FROM " . $fingerprints_table_name . " as f LEFT JOIN " . $leads_table_name . " as l ON f.lead_id=l.id WHERE";
     $pre_register_query .= " f.fingerprint=:fingerprint";
     $pre_register_stmt = $conn->prepare($pre_register_query);
@@ -140,8 +138,12 @@ if ($pre_register_stmt->execute()) {
     $lead_merge = true;
   } else {
     $row = $pre_register_stmt->fetch(PDO::FETCH_ASSOC);
+    if ($mode === 'authenticate' && $row['codeword'] === '') {
+      error_log('Security violation occurred.');
+      http_response_code(401);
+      die();
+    }
   }
-
   $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
   $neo4j_fingerprint_id = isset($row['neo4j_fingerprint_id']) ? strval($row['neo4j_fingerprint_id']) : false;
   $neo4j_lead_id = isset($row['neo4j_lead_id']) ? strval($row['neo4j_lead_id']) : false;
@@ -162,13 +164,13 @@ if ($pre_register_stmt->execute()) {
 }
 
 // register new fingerprint
-if (!$fingerprint_registered && !$emailConflict && !$fingerprint_id) {
+if (!$fingerprint_registered && !$fingerprint_id) {
   $query = "INSERT INTO " . $fingerprints_table_name . " SET fingerprint = :fingerprint";
   $stmt = $conn->prepare($query);
   $stmt->bindParam(':fingerprint', $fingerprint);
   if ($stmt->execute()) {
     $fingerprint_id = strval($conn->lastInsertId());
-    error_log("New fingerprint: " . strval($fingerprint_id));
+    //error_log("New fingerprint: " . strval($fingerprint_id));
   } else {
     http_response_code(500);
     die();
@@ -200,7 +202,7 @@ if ($token_check_stmt->execute()) {
   die();
 }
 
-if (!$visit_id && !$emailConflict) {
+if (!$visit_id) {
   // no visit exists; must create
   $visit_create_query = "INSERT INTO " . $visits_table_name .
     " SET fingerprint_id = :fingerprint_id,";
@@ -218,13 +220,13 @@ if (!$visit_id && !$emailConflict) {
   $visit_create_stmt->bindParam(':httpUserAgent', $httpUserAgent);
   if ($visit_create_stmt->execute()) {
     $visit_id = strval($conn->lastInsertId());
-    error_log("New visit: " . strval($visit_id));
+    //error_log("New visit: " . strval($visit_id));
   } else {
     http_response_code(500);
     die();
   }
 }
-if (!$has_token && !$emailConflict) {
+if (!$has_token) {
   // no token, must create
   $refreshToken = uniqid();
   $token_create_query = "INSERT INTO " . $tokens_table_name .
@@ -242,7 +244,7 @@ if (!$has_token && !$emailConflict) {
   $token_create_stmt->bindParam(':secret', $secret_key);
   if ($token_create_stmt->execute()) {
     $token_id = strval($conn->lastInsertId());
-    error_log("New token: " . strval($token_id));
+    //error_log("New token: " . strval($token_id));
   } else {
     http_response_code(500);
     die();
@@ -251,17 +253,16 @@ if (!$has_token && !$emailConflict) {
 // is fingerprint merged?
 if (!$neo4j_fingerprint_id) {
   $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
-  error_log("Merged fingerprint: " . strval($neo4j_fingerprint_id));
+  //error_log("Merged fingerprint: " . strval($neo4j_fingerprint_id));
   if ($neo4j_fingerprint_id)
     $merge = true;
   else $neo4j_fingerprint_id = 0;
 }
-if ($merge) error_log('merge');
-else error_log('no');
+
 // is visit merged?
 if (!$neo4j_visit_id) {
   $neo4j_visit_id = neo4j_merge_visit($client, $visit_id, $now_seconds);
-  error_log("Merged visit: " . strval($neo4j_visit_id));
+  //error_log("Merged visit: " . strval($neo4j_visit_id));
   if ($neo4j_visit_id)
     $merge = true;
   else $neo4j_visit_id = 0;
@@ -295,7 +296,7 @@ if ($merge) {
 
 // run on every register
 if ($neo4j_fingerprint_id && $neo4j_visit_id) {
-  error_log("Merged Fingerprint has Visit: " . strval($neo4j_fingerprint_id) . " " . strval($neo4j_visit_id));
+  //error_log("Merged Fingerprint has Visit: " . strval($neo4j_fingerprint_id) . " " . strval($neo4j_visit_id));
   $statement = neo4j_fingerprint_has_visit($neo4j_fingerprint_id, $neo4j_visit_id);
   if ($statement)
     $client->runStatement($statement);
@@ -305,13 +306,13 @@ if ($neo4j_fingerprint_id && $neo4j_visit_id) {
 // is lead merged to this fingerprint?
 if (!$neo4j_lead_id && $neo4j_fingerprint_id && $lead_id) {
   $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
-  error_log("Merged lead: " . strval($neo4j_lead_id));
+  //error_log("Merged lead: " . strval($neo4j_lead_id));
   $lead_merge = true;
 }
 
 if ($lead_merge && $neo4j_lead_id && $neo4j_fingerprint_id) {
   $statement = neo4j_lead_has_fingerprint($lead_id, $fingerprint_id);
-  error_log("Merged Lead has Fingerprint: " . strval($lead_id) . " " . strval($fingerprint_id));
+  //error_log("Merged Lead has Fingerprint: " . strval($lead_id) . " " . strval($fingerprint_id));
   if ($statement)
     $client->runStatement($statement);
   else error_log('bad on lead has fingerprint');
@@ -383,7 +384,6 @@ $results = array(
   "first_name" => $firstname,
   "beliefs" => $heldBeliefs,
   "known_lead" => !!$firstname,
-  "email_conflict" => $emailConflict,
   "created_at" => $now_seconds
 );
 

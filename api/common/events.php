@@ -257,7 +257,6 @@ function processEventStream($jwt, $payload)
 
         case "Belief": // Visit :VERB* Belief
           if (isset($neo4j_corpus_ids[$id], $sql_corpus_ids[$id])) {
-            // SIDEBAR --> does this visit_id already have a value for this belief_id
             $has_belief_query = "SELECT verb FROM " . $heldbeliefs_table_name . " WHERE fingerprint_id = :fingerprint_id AND belief_id = :belief_id";
             $has_belief_stmt = $conn->prepare($has_belief_query);
             $has_belief_stmt->bindParam(':fingerprint_id', $fingerprint_id);

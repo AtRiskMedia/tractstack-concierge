@@ -9,7 +9,6 @@ function getProfile($jwt)
 
   // get jwt
   $lead_id = isset($jwt->lead_id) ? $jwt->lead_id : false;
-
   // initial SQL lookup
   $profile_query = "SELECT first_name, email, contact_persona, shortBio FROM " . $leads_table_name . " WHERE id=:lead_id";
   $profile_stmt = $conn->prepare($profile_query);
@@ -182,7 +181,7 @@ function saveProfile($jwt, $payload)
     }
   }
 
-  if (!$lead_id && $merged['lead_id'] && $fingerprint_id) {
+  if (!$lead_id && isset($merged['lead_id']) && $fingerprint_id) {
     // this is a known lead with a new fingerprint
     $key_query = "UPDATE " . $fingerprints_table_name .
       " SET lead_id=:lead_id" .
@@ -192,7 +191,7 @@ function saveProfile($jwt, $payload)
     $key_stmt->bindParam(':fingerprint_id', $fingerprint_id);
     $key_stmt->execute();
     // now update neo4j graph -- merge lead with fingerprint, each time to be sure
-    if (!$merged['neo4j_lead_id'] && $merged['neo4j_fingerprint_id'] && $merged['lead_id'] && $fingerprint_id) {
+    if (!isset($merged['neo4j_lead_id']) && isset($merged['neo4j_fingerprint_id']) && isset($merged['lead_id']) && $fingerprint_id) {
       $neo4j_lead_id = neo4j_merge_lead($client, $merged['lead_id'], $merged['neo4j_fingerprint_id']);
       //now update foreign key and neo4j id on leads table
       if ($neo4j_lead_id) {
@@ -205,7 +204,7 @@ function saveProfile($jwt, $payload)
         $set_merged_stmt->execute();
       }
     }
-  } else if (!$merged['email'] && $firstname && $email && $contactPersona && $codeword) {
+  } else if (!isset($merged['email']) && $firstname && $email && $contactPersona && $codeword) {
     // new lead; store to SQL then update neo4j
     $query = "INSERT INTO " . $leads_table_name .
       " SET first_name=:first_name, email=:email, contact_persona=:persona, shortBio=:shortBio," .
@@ -258,13 +257,13 @@ function saveProfile($jwt, $payload)
     }
   }
   // now update neo4j graph -- merge lead with fingerprint, each time to be sure
-  if (!$merged['neo4j_lead_id'] && $merged['neo4j_fingerprint_id'] && $lead_id && $fingerprint_id) {
+  if (!isset($merged['neo4j_lead_id']) && isset($merged['neo4j_fingerprint_id']) && $lead_id && $fingerprint_id) {
     $neo4j_lead_id = neo4j_merge_lead($client, $lead_id, $merged['neo4j_fingerprint_id']);
     //now update foreign key and neo4j id on leads table
     if ($neo4j_lead_id) {
       $statement = neo4j_lead_has_fingerprint($neo4j_lead_id, $merged['neo4j_fingerprint_id']);
       if ($statement) {
-        $result = $client->runStatements([$statement]);
+        $client->runStatements([$statement]);
       }
       $set_merged_query = "UPDATE " . $leads_table_name .
         " SET merged=:neo4j_lead_id" .

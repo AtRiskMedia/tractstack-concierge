@@ -48,14 +48,14 @@ if ($jwt) {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     if (isset($data)) {
       if (isset($data->firstname, $data->codeword, $data->persona, $data->email, $data->init))
-        $http_response_code = initProfile($decoded->data, $data);
-      else if (isset($data->firstname, $data->codeword, $data->persona, $data->email))
-        $http_response_code = saveProfile($decoded->data, $data);
+        if ($data->init)
+          $http_response_code = initProfile($decoded->data, $data);
+        else
+          $http_response_code = saveProfile($decoded->data, $data);
     } else if ($_SERVER['REQUEST_METHOD'] === "GET") {
       $http_response_code = getProfile($decoded->data);
     }
   } catch (Exception $e) {
-    error_log($e->getMessage());
     echo json_encode(array(
       "message" => "Access denied.",
       "error" => $e->getMessage()
