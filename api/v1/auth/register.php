@@ -67,8 +67,22 @@ $encryptedEmail = isset($data->encryptedEmail) ? $data->encryptedEmail : false;
 $mode = false;
 $pre_register_query = false;
 $pre_register_stmt = false;
-$httpReferrer = $_SERVER['HTTP_REFERER'] ?? false;
 $httpUserAgent = $_SERVER['HTTP_USER_AGENT'] ?? false;
+if (isset($data->referrer)) $referrer = $data->referrer;
+else $referrer = false;
+if (isset($referrer->httpReferrer)) $httpReferrer = $referrer->httpReferrer;
+else $httpReferrer = '';
+if (isset($referrer->utmSource)) $utmSource = $referrer->utmSource;
+else $utmSource = '';
+if (isset($referrer->utmMedium)) $utmMedium = $referrer->utmMedium;
+else $utmMedium = '';
+if (isset($referrer->utmCampaign)) $utmCampaign  = $referrer->utmCampaign;
+else $utmCampaign = '';
+if (isset($referrer->utmTerm)) $utmTerm = $referrer->utmTerm;
+else $utmTerm = '';
+if (isset($referrer->utmContent)) $utmContent  = $referrer->utmContent;
+else $utmContent = '';
+error_log(json_encode($data));
 
 // scenario one -- payload includes fingerprint
 // mode: fingerprint
@@ -211,13 +225,23 @@ if (!$visit_id) {
     " updated_at = :updated_at," .
     " merged = FALSE," .
     " httpReferrer = :httpReferrer," .
-    " httpUserAgent = :httpUserAgent";
+    " httpUserAgent = :httpUserAgent," .
+    " utmSource = :utmSource," .
+    " utmContent = :utmContent," .
+    " utmTerm = :utmTerm," .
+    " utmMedium = :utmMedium," .
+    " utmCampaign = :utmCampaign";
   $visit_create_stmt = $conn->prepare($visit_create_query);
   $visit_create_stmt->bindParam(':fingerprint_id', $fingerprint_id);
   $visit_create_stmt->bindParam(':created_at', $now);
   $visit_create_stmt->bindParam(':updated_at', $now);
   $visit_create_stmt->bindParam(':httpReferrer', $httpReferrer);
   $visit_create_stmt->bindParam(':httpUserAgent', $httpUserAgent);
+  $visit_create_stmt->bindParam(':utmSource', $utmSource);
+  $visit_create_stmt->bindParam(':utmContent', $utmContent);
+  $visit_create_stmt->bindParam(':utmTerm', $utmTerm);
+  $visit_create_stmt->bindParam(':utmMedium', $utmMedium);
+  $visit_create_stmt->bindParam(':utmCampaign', $utmCampaign);
   if ($visit_create_stmt->execute()) {
     $visit_id = strval($conn->lastInsertId());
     //error_log("New visit: " . strval($visit_id));

@@ -59,6 +59,11 @@ CREATE TABLE visits(
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   httpReferrer VARCHAR(4096),
+  utmSource VARCHAR(40),
+  utmMedium VARCHAR(40),
+  utmCampaign VARCHAR(40),
+  utmTerm VARCHAR(40),
+  utmContent VARCHAR(40),
   httpUserAgent VARCHAR(4096),
   merged INT(11) unsigned NOT NULL DEFAULT 0,
   CONSTRAINT `fk_visit_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT

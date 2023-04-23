@@ -49,9 +49,12 @@ if ($jwt) {
     if (isset($data)) {
       if (isset($data->firstname, $data->codeword, $data->persona, $data->email, $data->init))
         if ($data->init)
-          $http_response_code = initProfile($decoded->data, $data);
-        else
-          $http_response_code = saveProfile($decoded->data, $data);
+          error_log('init');
+        else error_log('save');
+      if ($data->init)
+        $http_response_code = initProfile($decoded->data, $data);
+      else
+        $http_response_code = saveProfile($decoded->data, $data);
     } else if ($_SERVER['REQUEST_METHOD'] === "GET") {
       $http_response_code = getProfile($decoded->data);
     }
