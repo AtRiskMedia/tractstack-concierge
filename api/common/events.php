@@ -4,7 +4,6 @@ function processEventStream($jwt, $payload)
 {
   // neo4j
   $client = neo4j_connect();
-
   // for SQL
   $databaseService = new DatabaseService();
   $conn = $databaseService->getConnection();
@@ -44,6 +43,7 @@ function processEventStream($jwt, $payload)
   }
   if (!$neo4j_visit_id && !$neo4j_fingerprint_id) {
     // visit has not yet been merged; something is wrong
+    error_log('this visit has not been merged to neo4j; something is wrong');
     return (401);
   }
 
@@ -90,47 +90,48 @@ function processEventStream($jwt, $payload)
     // loop through and merge all new nodes
     foreach ($nodes as $id => $node) {
       if (!isset($neo4j_corpus_ids[$id]) && isset($node->type)) {
+        $thisTitleTrimmed = substr($node->title, 0, 48);
         switch ($node->type) {
           case "Pane":
             $neo4j_object_id = neo4j_merge_corpus($client, $id, $node->title, $node->type);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, $node->type, $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id];
             break;
 
           case "StoryFragment":
             $neo4j_storyFragment_id = neo4j_merge_storyfragment($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_storyFragment_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "StoryFragment", $node->parentId, $neo4j_storyFragment_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "StoryFragment", $node->parentId, $neo4j_storyFragment_id];
             break;
 
           case "TractStack":
             $neo4j_tractStack_id = neo4j_merge_tractstack($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_tractStack_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "TractStack", null, $neo4j_tractStack_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "TractStack", null, $neo4j_tractStack_id];
             break;
 
           case "Impression":
             $neo4j_object_id = neo4j_merge_impression($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "Impression", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Impression", $node->parentId, $neo4j_object_id];
             break;
 
           case "MenuItem":
             $neo4j_object_id = neo4j_merge_menuitem($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "MenuItem", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "MenuItem", $node->parentId, $neo4j_object_id];
             break;
 
           case "Belief": // for a belief, must also update SQL table 
             $neo4j_object_id = neo4j_merge_belief($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, "Belief", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $node->parentId, $neo4j_object_id];
             break;
 
           case "H5P":
             $neo4j_object_id = neo4j_merge_corpus($client, $id, $node->title, $node->type);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$node->title, $id, $node->type, $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id];
             break;
         }
       }
@@ -225,10 +226,11 @@ function processEventStream($jwt, $payload)
 
   if (isset($events)) {
     foreach ($events as $event) {
-
       // process eventStream payload; merge to graph (if not set); add relationship
       $verb = isset($event->verb) ? str_replace(' ', '_', strtoupper($event->verb)) : null;
+      $object = isset($event->object) ? str_replace(' ', '_', strtoupper($event->object)) : null;
       $previous_verb = null;
+      $previous_verb_object = null;
       $id = isset($event->id) ? $event->id : null;
       $type = isset($event->type) ? $event->type : null;
       $score = isset($event->score) ? $event->score : null;
@@ -257,16 +259,29 @@ function processEventStream($jwt, $payload)
 
         case "Belief": // Visit :VERB* Belief
           if (isset($neo4j_corpus_ids[$id], $sql_corpus_ids[$id])) {
-            $has_belief_query = "SELECT verb FROM " . $heldbeliefs_table_name . " WHERE fingerprint_id = :fingerprint_id AND belief_id = :belief_id";
+            $has_belief_query = "SELECT verb, object FROM " . $heldbeliefs_table_name . " WHERE fingerprint_id = :fingerprint_id AND belief_id = :belief_id";
             $has_belief_stmt = $conn->prepare($has_belief_query);
             $has_belief_stmt->bindParam(':fingerprint_id', $fingerprint_id);
             $has_belief_stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
             if ($has_belief_stmt->execute()) {
               $row = $has_belief_stmt->fetch(PDO::FETCH_ASSOC);
               $previous_verb = isset($row['verb']) ? $row['verb'] : false;
+              $previous_verb_object = isset($row['object']) ? $row['object'] : false;
             }
-            if ($previous_verb) {
-              // must insert SQL and merge Neo4j
+            if ($previous_verb && $previous_verb_object) {
+              // must insert SQL and merge Neo4j ** e.g. verb = IDENTIFY_AS; verb doesn't change, but object does
+              $query = "UPDATE " . $heldbeliefs_table_name .
+                " SET object = :object WHERE belief_id = :belief_id AND fingerprint_id = :fingerprint_id";
+              $stmt = $conn->prepare($query);
+              $stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
+              $stmt->bindParam(':fingerprint_id', $fingerprint_id);
+              $stmt->bindParam(':object', $object);
+              if (!$stmt->execute()) {
+                http_response_code(500);
+                die();
+              }
+            } else if ($previous_verb) {
+              // must update SQL and merge Neo4j
               $query = "UPDATE " . $heldbeliefs_table_name .
                 " SET verb = :verb WHERE belief_id = :belief_id AND fingerprint_id = :fingerprint_id";
               $stmt = $conn->prepare($query);
@@ -278,12 +293,13 @@ function processEventStream($jwt, $payload)
                 die();
               }
             } else {
-              // must update SQL and update Neo4j
-              $query = "INSERT INTO " . $heldbeliefs_table_name . " SET belief_id = :belief_id, fingerprint_id = :fingerprint_id, verb = :verb";
+              // must insert into SQL and push to Neo4j
+              $query = "INSERT INTO " . $heldbeliefs_table_name . " SET belief_id = :belief_id, fingerprint_id = :fingerprint_id, verb = :verb, object = :object";
               $stmt = $conn->prepare($query);
               $stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
               $stmt->bindParam(':fingerprint_id', $fingerprint_id);
               $stmt->bindParam(':verb', $verb);
+              $stmt->bindParam(':object', $object);
               if (!$stmt->execute()) {
                 http_response_code(500);
                 die();
@@ -292,10 +308,10 @@ function processEventStream($jwt, $payload)
             // now merge to neo4j
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             if ($previous_verb) {
-              $statement = neo4j_merge_belief_remove_action($neo4j_visit_id, $neo4j_object_id, $previous_verb);
+              $statement = neo4j_merge_belief_remove_action($neo4j_visit_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
             }
-            $statement = neo4j_merge_belief_action($neo4j_visit_id, $neo4j_object_id, $verb);
+            $statement = neo4j_merge_belief_action($neo4j_visit_id, $neo4j_object_id, $verb, $object);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB* Belief ' . $neo4j_visit_id . "   " . $neo4j_object_id);
           } else

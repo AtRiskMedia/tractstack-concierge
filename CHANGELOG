@@ -2,3 +2,9 @@
 
 - Version 1.0.0 released under SSPL-1.0
 
+
+[1.0.1] - 2023-07-14
+
+- Added IDENTIFY_AS belief with relationship variable
+- implements ToggleBeliefGrid
+

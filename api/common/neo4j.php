@@ -177,38 +177,41 @@ function neo4j_lead_has_fingerprint($lead_id, $fingerprint_id)
   return $statement;
 }
 
-function neo4j_merge_belief_action($neo4j_visit, $neo4j_belief, $verb)
+function neo4j_merge_belief_action($neo4j_visit, $neo4j_belief, $verb, $object = NULL)
 {
   if (MODE == "DEV") return null;
-  switch ($verb) {
-    case in_array($verb, HELDBELIEFS, true):
-      $verb = str_replace(' ', '_', $verb);
-      $statement =  Statement::create(
-        'MATCH (v),(b) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief MERGE (v)-[:' . $verb . ']->(b)',
-        ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
-      );
-      return $statement;
-      break;
-    default:
-      error_log('MISS ON ' . $verb);
-      break;
+  if (!$object && in_array($verb, HELDBELIEFS, true)) {
+    $verb = str_replace(' ', '_', $verb);
+    $statement =  Statement::create(
+      'MATCH (v),(b) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief MERGE (v)-[:' . $verb . ']->(b)',
+      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
+    );
+    return $statement;
+  } else if ($object) {
+    // this is an IDENTIFY_AS belief, store "object" on relationship
+    $verb = str_replace(' ', '_', $verb);
+    $object = str_replace(' ', '_', $object);
+    $statement =  Statement::create(
+      'MATCH (v),(b) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief MERGE (v)-[r:' . $verb . ']->(b) ON CREATE SET r.object=$object',
+      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief), 'object' => $object]
+    );
+    return $statement;
+  } else {
+    error_log('MISS ON ' . $verb);
   }
 }
 
-function neo4j_merge_belief_remove_action($neo4j_visit, $neo4j_belief, $previous_verb)
+function neo4j_merge_belief_remove_action($neo4j_visit, $neo4j_belief, $previous_verb, $object = null)
 {
   if (MODE == "DEV") return null;
-  switch ($previous_verb) {
-    case in_array($previous_verb, HELDBELIEFS, true):
-      $statement =  Statement::create(
-        'MATCH (v:Visit)-[r:' . $previous_verb . ']->(b:Belief) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief WITH r DELETE r',
-        ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
-      );
-      return $statement;
-      break;
-    default:
-      error_log('MISS ON ' . $previous_verb);
-      break;
+  if (in_array($previous_verb, HELDBELIEFS, true) || $object) {
+    $statement =  Statement::create(
+      'MATCH (v:Visit)-[r:' . $previous_verb . ']->(b:Belief) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief WITH r DELETE r',
+      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
+    );
+    return $statement;
+  } else {
+    error_log('MISS ON ' . $previous_verb);
   }
 }
 
