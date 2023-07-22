@@ -361,7 +361,7 @@ if ($knownNewFingerprint && $neo4j_lead_id) {
 
 // load heldBeliefs for this fingerprint_id
 if ($fingerprint_id) {
-  $belief_query = "SELECT c.object_name as title, c.object_id as slug, b.verb, b.object";
+  $belief_query = "SELECT c.object_name as slug, b.verb, b.object";
   $belief_query .= " FROM " . $beliefs_table_name . " as b LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
   $belief_query .= " b.fingerprint_id=:fingerprint";
   $belief_stmt = $conn->prepare($belief_query);
