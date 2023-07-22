@@ -88,12 +88,12 @@ CREATE TABLE tokens(
 
 CREATE TABLE heldbeliefs(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  belief_id VARCHAR(36) NOT NULL,
+  belief_id INT(11) unsigned NOT NULL,
   fingerprint_id INT(11) unsigned NOT NULL,
   object_type VARCHAR(40) NOT NULL DEFAULT 'Belief',
   object VARCHAR(40),
   verb ENUM ('STRONGLY_AGREE','AGREE','NEITHER_AGREE_NOR_DISAGREE','DISAGREE','STRONGLY_DISAGREE','INTERESTED','NOT_INTERESTED','YES','NO','TRUE','FALSE','IDENTIFY_AS') NOT NULL,
-  CONSTRAINT `fk_belief_corpus` FOREIGN KEY (belief_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_belief_corpus` FOREIGN KEY (belief_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_belief_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 
