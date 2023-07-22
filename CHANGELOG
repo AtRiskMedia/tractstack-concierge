@@ -8,3 +8,10 @@
 - Added IDENTIFY_AS belief with relationship variable
 - implements ToggleBeliefGrid
 
+[1.1.0] - 2023-07-21
+
+- Re-worked data schema for corpus table; removed parent_id
+- Added graphmap table to allow one pane or storyFragment or ? to 
+  be shared by multiple parents
+- Changed how neo4j merged ids are stored *now in graphmap table*
+

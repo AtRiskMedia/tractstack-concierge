@@ -1,6 +1,6 @@
 # Concierge api service for Tract Stack by At Risk Media
 
-_Intelligent no-code landing pages for product-market-fit validation_
+_Intelligent no-code websites & landing pages that validate product-market-fit_
 
 - Built using [Gatsby](https://gatsbyjs.com)
 - By [At Risk Media](https://atriskmedia.com) with love and oodles of unicorn oomph!
@@ -39,9 +39,16 @@ CREATE TABLE corpus(
   created_at TIMESTAMP NOT NULL,
   object_name VARCHAR(48) NOT NULL,
   object_id VARCHAR(36) NOT NULL UNIQUE,
+  object_type VARCHAR(40) NOT NULL
+);
+
+CREATE TABLE graphmap(
+  id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  object_id VARCHAR(36) NOT NULL,
   parent_id VARCHAR(36),
-  object_type VARCHAR(40) NOT NULL,
-  merged INT(11) unsigned NOT NULL DEFAULT 0
+  merged INT(11) unsigned NOT NULL DEFAULT 0,
+  CONSTRAINT `fk_corpus` FOREIGN KEY (object_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_parent` FOREIGN KEY (parent_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 
 CREATE TABLE fingerprints(
@@ -81,12 +88,12 @@ CREATE TABLE tokens(
 
 CREATE TABLE heldbeliefs(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  belief_id INT(11) unsigned NOT NULL,
+  belief_id VARCHAR(36) NOT NULL,
   fingerprint_id INT(11) unsigned NOT NULL,
   object_type VARCHAR(40) NOT NULL DEFAULT 'Belief',
   object VARCHAR(40),
   verb ENUM ('STRONGLY_AGREE','AGREE','NEITHER_AGREE_NOR_DISAGREE','DISAGREE','STRONGLY_DISAGREE','INTERESTED','NOT_INTERESTED','YES','NO','TRUE','FALSE','IDENTIFY_AS') NOT NULL,
-  CONSTRAINT `fk_belief_corpus` FOREIGN KEY (belief_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_belief_corpus` FOREIGN KEY (belief_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_belief_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 

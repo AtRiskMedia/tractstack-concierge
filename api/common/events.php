@@ -10,6 +10,7 @@ function processEventStream($jwt, $payload)
   $visits_table_name = 'visits';
   $fingerprints_table_name = 'fingerprints';
   $corpus_table_name = 'corpus';
+  $graphmap_table_name = 'graphmap';
   $heldbeliefs_table_name = 'heldbeliefs';
 
   // get jwt
@@ -26,6 +27,8 @@ function processEventStream($jwt, $payload)
   $ids = [];
   $neo4j_corpus_ids = [];
   $sql_corpus_ids = [];
+  $sql_corpus_graphmap_ids = [];
+  $graphmap_known = [];
   $neo4j_merged_corpus_to_update_sql = [];
 
   // first get neo4j id for visit
@@ -53,7 +56,8 @@ function processEventStream($jwt, $payload)
   $nodes = $payload->nodes;
 
   if (isset($nodes)) {
-    // get neo4j ids for nodes in this payload
+    // check each node in this payload
+    // -- is it in corpus table? is it in graphmap table and merged to neo4j?
     foreach ($nodes as $id => $node) {
       array_push($ids, $id);
     }
@@ -66,72 +70,98 @@ function processEventStream($jwt, $payload)
       $ids
     );
     $in_placeholders = implode(',', array_keys($idsArray));
-
-    $merged_check_query = "SELECT id as sql_id,object_id,merged FROM " . $corpus_table_name .
-      " WHERE object_id IN ( " . $in_placeholders . " )";
+    $merged_check_query = "SELECT c.id as sql_id,c.object_id,g.merged, g.parent_id as parent_id FROM " . $corpus_table_name .
+      " as c LEFT JOIN " . $graphmap_table_name . " as g ON " .
+      " c.object_id = g.object_id " .
+      " WHERE c.object_id IN ( " . $in_placeholders . " )";
     $merged_check_stmt = $conn->prepare($merged_check_query);
     if (!$merged_check_stmt->execute(array_merge($filter, $idsArray))) {
       die();
     } else {
       $rows = $merged_check_stmt->fetchAll();
       foreach ($rows as $row) {
+        // this may include duplicates ... due to many to one of graphmap
         $sql_id = isset($row['sql_id']) ? $row['sql_id'] : false;
         $object_id = isset($row['object_id']) ? $row['object_id'] : false;
+        $parent_id = isset($row['parent_id']) ? $row['parent_id'] : false;
         $merged = isset($row['merged']) ? $row['merged'] : false;
-        if ($merged)
-          $neo4j_corpus_ids[$object_id] = $merged;
-        if ($sql_id) {
-          $sql_corpus_ids[$object_id] = $sql_id;
+        if ($object_id && $parent_id && $merged) {
+          $key = $object_id . '--' . $parent_id;
+          $graphmap_known[$key] = true;
         }
+        $thisNode = isset($nodes->$object_id) ? $nodes->$object_id : null;
+        $thisNodeParent = isset($thisNode->parentId) ? $thisNode->parentId : null;
+        if ($sql_id) {
+          if ($parent_id && $thisNodeParent !== $parent_id) {
+            // already in SQL but with different parentId
+            $sql_corpus_ids[$object_id] = $sql_id;
+            $sql_corpus_graphmap_ids[$object_id] = $sql_id;
+          } else
+            // already in SQL
+            $sql_corpus_ids[$object_id] = $sql_id;
+        }
+        if ($merged)
+          // already in Neo4j
+          $neo4j_corpus_ids[$object_id] = $merged;
       }
     }
     $neo4j_corpus_ids_merged = $neo4j_corpus_ids;
+    $neo4j_corpus_ids = [];
 
-    // loop through and merge all new nodes
+    // second loop through and merge all new nodes to neo4j
+    // -- each node may or may not be in sql
+    // -- merge each node to neo4j, get merged id
+    // -- if not in sql, flag for add
+    // -- if already in_sql but has additional_parent, flag to add edge in neo4j
     foreach ($nodes as $id => $node) {
+      $in_sql = false;
+      $additional_parent = false;
+      if (isset($sql_corpus_ids[$id])) $in_sql = true;
+      if (isset($sql_corpus_graphmap_ids[$id])) $additional_parent = true;
+
       if (!isset($neo4j_corpus_ids[$id]) && isset($node->type)) {
         $thisTitleTrimmed = substr($node->title, 0, 48);
         switch ($node->type) {
           case "Pane":
             $neo4j_object_id = neo4j_merge_corpus($client, $id, $node->title, $node->type);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id, $in_sql, $additional_parent];
             break;
 
           case "StoryFragment":
             $neo4j_storyFragment_id = neo4j_merge_storyfragment($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_storyFragment_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "StoryFragment", $node->parentId, $neo4j_storyFragment_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "StoryFragment", $node->parentId, $neo4j_storyFragment_id, $in_sql, $additional_parent];
             break;
 
           case "TractStack":
             $neo4j_tractStack_id = neo4j_merge_tractstack($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_tractStack_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "TractStack", null, $neo4j_tractStack_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "TractStack", null, $neo4j_tractStack_id, $in_sql, $additional_parent];
             break;
 
           case "Impression":
             $neo4j_object_id = neo4j_merge_impression($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Impression", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Impression", $node->parentId, $neo4j_object_id, $in_sql, $additional_parent];
             break;
 
           case "MenuItem":
             $neo4j_object_id = neo4j_merge_menuitem($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "MenuItem", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "MenuItem", $node->parentId, $neo4j_object_id, $in_sql, $additional_parent];
             break;
 
           case "Belief": // for a belief, must also update SQL table 
             $neo4j_object_id = neo4j_merge_belief($client, $id, $node->title);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $node->parentId, $neo4j_object_id, $in_sql, $additional_parent];
             break;
 
           case "H5P":
             $neo4j_object_id = neo4j_merge_corpus($client, $id, $node->title, $node->type);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id];
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id, $in_sql, $additional_parent];
             break;
         }
       }
@@ -139,7 +169,9 @@ function processEventStream($jwt, $payload)
 
     // loop through and merge relationships between all new nodes
     foreach ($nodes as $id => $node) {
-      if (!isset($neo4j_corpus_ids_merged[$id]) && isset($neo4j_corpus_ids[$id]) && isset($node->type)) {
+      // for corpus beloging to multiple parents, must detect:
+      $special = isset($node->type) && isset($neo4j_corpus_ids[$id]) && isset($neo4j_corpus_ids_merged[$id]) && $neo4j_corpus_ids[$id] === $neo4j_corpus_ids_merged[$id] ? true : false;
+      if ($special || (!isset($neo4j_corpus_ids_merged[$id]) && isset($neo4j_corpus_ids[$id]) && isset($node->type))) {
         switch ($node->type) {
           case "Pane": // StoryFragment :CONTAINS Pane ... or TractStack :CONTAINS Pane if context
             $neo4j_object_id = $neo4j_corpus_ids[$id];
@@ -209,16 +241,44 @@ function processEventStream($jwt, $payload)
     }
 
     if (count($neo4j_merged_corpus_to_update_sql)) {
-      // update SQL with merged graph ids
+      $graphmap_to_update_sql = [];
+      // first store to corpus table
       $corpus_merge_query = "INSERT INTO " . $corpus_table_name .
-        " (object_name, object_id, object_type, parent_id, merged)" .
-        " VALUES (?,?,?,?,?)";
+        " (object_name, object_id, object_type )" .
+        " VALUES (?,?,?)";
       $corpus_merge_stmt = $conn->prepare($corpus_merge_query);
       $conn->beginTransaction();
       foreach ($neo4j_merged_corpus_to_update_sql as $data) {
-        $corpus_merge_stmt->execute($data);
-        $sql_id = $conn->lastInsertId();
-        $sql_corpus_ids[$data[1]] = $sql_id;
+        // data = [ 0:object_name, 1:object_id, 2:object_type, 3:parent_id, 4:neo4j merged_id, 5:in_sql, 6:additional_parent]
+        if ($data[1] && $data[2] && $data[4] && !$data[5] && !$data[6]) { // if not already in sql
+          $thisData = [$data[0], $data[1], $data[2]];
+          $corpus_merge_stmt->execute($thisData);
+          $sql_id = $conn->lastInsertId();
+          if ($sql_id) {
+            $graphmap_to_update_sql[] = [$data[1], $data[3], $data[4]];
+            $sql_corpus_ids[$data[1]] = $sql_id;
+          }
+        } else if ($data[1] && $data[2] && $data[4] && $data[5] && $data[6]) { // other parent already in sql, not this new parent
+          $key = $data[1] . '--' . $data[3];
+          if (!isset($graphmap_known[$key]))
+            // object already in sql, only update graphmap
+            $graphmap_to_update_sql[] = [$data[1], $data[3], $data[4]];
+        } else if (!$data[5]) {
+          error_log(' MISS ' . json_encode($data));
+        }
+      }
+      $conn->commit();
+
+      // then update graphmap with merged graph ids
+      $graphmap_merge_query = "INSERT INTO " . $graphmap_table_name .
+        " (object_id, parent_id, merged )" .
+        " VALUES (?,?,?)";
+      $graphmap_merge_stmt = $conn->prepare($graphmap_merge_query);
+      $conn->beginTransaction();
+      foreach ($graphmap_to_update_sql as $data) {
+        // data = [ 0:object_id, 1:parent_id, 2:merged ]
+        $graphmap_merge_stmt->execute($data);
+        $conn->lastInsertId();
       }
       $conn->commit();
     }
