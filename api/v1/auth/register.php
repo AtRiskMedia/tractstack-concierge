@@ -361,11 +361,29 @@ if ($knownNewFingerprint && $neo4j_lead_id) {
 
 // load heldBeliefs for this fingerprint_id
 if ($fingerprint_id) {
-  $belief_query = "SELECT c.object_id as id, c.object_name as slug, b.verb, b.object";
-  $belief_query .= " FROM " . $beliefs_table_name . " as b LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
-  $belief_query .= " b.fingerprint_id=:fingerprint";
-  $belief_stmt = $conn->prepare($belief_query);
-  $belief_stmt->bindParam(':fingerprint', $fingerprint_id);
+  $belief_stmt = false;
+  if ($lead_id) {
+    $belief_query = "SELECT c.object_name as slug, c.object_id as id, b.verb, b.object";
+    $belief_query .= " FROM " . $leads_table_name . " as l";
+    $belief_query .= " LEFT JOIN " . $fingerprints_table_name . " as f ON f.lead_id=l.id";
+    $belief_query .= " LEFT JOIN " . $beliefs_table_name . " as b ON b.fingerprint_id=f.id";
+    $belief_query .= " LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
+    $belief_query .= " l.id=:lead";
+    $belief_query .= " AND b.updated_at IN ( SELECT MAX(b.updated_at) FROM " . $leads_table_name . " as l";
+    $belief_query .= " LEFT JOIN " . $fingerprints_table_name . " as f ON f.lead_id=l.id";
+    $belief_query .= " LEFT JOIN " . $beliefs_table_name . " as b ON b.fingerprint_id=f.id";
+    $belief_query .= " LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
+    $belief_query .= " l.id=:lead";
+    $belief_query .= " )";
+    $belief_stmt = $conn->prepare($belief_query);
+    $belief_stmt->bindParam(':lead', $lead_id);
+  } else {
+    $belief_query = "SELECT c.object_id as id, c.object_name as slug, b.verb, b.object";
+    $belief_query .= " FROM " . $beliefs_table_name . " as b LEFT JOIN " . $corpus_table_name . " as c ON b.belief_id=c.id WHERE";
+    $belief_query .= " b.fingerprint_id=:fingerprint";
+    $belief_stmt = $conn->prepare($belief_query);
+    $belief_stmt->bindParam(':fingerprint', $fingerprint_id);
+  }
   if ($belief_stmt->execute()) {
     $count = $belief_stmt->rowCount();
     if ($count > 0) {
@@ -376,7 +394,7 @@ if ($fingerprint_id) {
 }
 
 // now issue JWT
-$issuer_claim = "tractStack by At Risk Media";
+$issuer_claim = "Tract Stack by At Risk Media";
 $audience_claim = $fingerprint;
 $issuedat_claim = time();
 $notbefore_claim = time();

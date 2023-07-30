@@ -39,16 +39,16 @@ CREATE TABLE corpus(
   created_at TIMESTAMP NOT NULL,
   object_name VARCHAR(48) NOT NULL,
   object_id VARCHAR(36) NOT NULL UNIQUE,
-  object_type VARCHAR(40) NOT NULL
+  object_type VARCHAR(40) NOT NULL,
+  merged INT(11) unsigned NOT NULL DEFAULT 0
 );
 
-CREATE TABLE graphmap(
+CREATE TABLE parents(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  object_id VARCHAR(36) NOT NULL,
-  parent_id VARCHAR(36),
-  merged INT(11) unsigned NOT NULL DEFAULT 0,
-  CONSTRAINT `fk_corpus` FOREIGN KEY (object_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT,
-  CONSTRAINT `fk_parent` FOREIGN KEY (parent_id) REFERENCES corpus (object_id) ON DELETE CASCADE ON UPDATE RESTRICT
+  object_id INT(11) unsigned,
+  parent_id INT(11) unsigned,
+  CONSTRAINT `fk_object_id` FOREIGN KEY (object_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_parent_id` FOREIGN KEY (parent_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 
 CREATE TABLE fingerprints(
@@ -93,6 +93,8 @@ CREATE TABLE heldbeliefs(
   object_type VARCHAR(40) NOT NULL DEFAULT 'Belief',
   object VARCHAR(40),
   verb ENUM ('STRONGLY_AGREE','AGREE','NEITHER_AGREE_NOR_DISAGREE','DISAGREE','STRONGLY_DISAGREE','INTERESTED','NOT_INTERESTED','YES','NO','TRUE','FALSE','IDENTIFY_AS') NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
   CONSTRAINT `fk_belief_corpus` FOREIGN KEY (belief_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_belief_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );

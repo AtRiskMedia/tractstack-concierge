@@ -177,14 +177,14 @@ function neo4j_lead_has_fingerprint($lead_id, $fingerprint_id)
   return $statement;
 }
 
-function neo4j_merge_belief_action($neo4j_visit, $neo4j_belief, $verb, $object = NULL)
+function neo4j_merge_belief_action($neo4j_fingerprint, $neo4j_belief, $verb, $object = NULL)
 {
   if (MODE == "DEV") return null;
   if (!$object && in_array($verb, HELDBELIEFS, true)) {
     $verb = str_replace(' ', '_', $verb);
     $statement =  Statement::create(
-      'MATCH (v),(b) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief MERGE (v)-[:' . $verb . ']->(b)',
-      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
+      'MATCH (f),(b) WHERE ID(f)=$neo4j_fingerprint AND ID(b)=$neo4j_belief MERGE (f)-[:' . $verb . ']->(b)',
+      ['neo4j_fingerprint' => intval($neo4j_fingerprint), 'neo4j_belief' => intval($neo4j_belief)]
     );
     return $statement;
   } else if ($object) {
@@ -192,8 +192,8 @@ function neo4j_merge_belief_action($neo4j_visit, $neo4j_belief, $verb, $object =
     $verb = str_replace(' ', '_', $verb);
     $object = str_replace(' ', '_', $object);
     $statement =  Statement::create(
-      'MATCH (v),(b) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief MERGE (v)-[r:' . $verb . ']->(b) ON CREATE SET r.object=$object',
-      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief), 'object' => $object]
+      'MATCH (f),(b) WHERE ID(f)=$neo4j_fingerprint AND ID(b)=$neo4j_belief MERGE (f)-[r:' . $verb . ']->(b) ON CREATE SET r.object=$object',
+      ['neo4j_fingerprint' => intval($neo4j_fingerprint), 'neo4j_belief' => intval($neo4j_belief), 'object' => $object]
     );
     return $statement;
   } else {
@@ -201,13 +201,13 @@ function neo4j_merge_belief_action($neo4j_visit, $neo4j_belief, $verb, $object =
   }
 }
 
-function neo4j_merge_belief_remove_action($neo4j_visit, $neo4j_belief, $previous_verb, $object = null)
+function neo4j_merge_belief_remove_action($neo4j_fingerprint, $neo4j_belief, $previous_verb, $object = null)
 {
   if (MODE == "DEV") return null;
   if (in_array($previous_verb, HELDBELIEFS, true) || $object) {
     $statement =  Statement::create(
-      'MATCH (v:Visit)-[r:' . $previous_verb . ']->(b:Belief) WHERE ID(v)=$neo4j_visit AND ID(b)=$neo4j_belief WITH r DELETE r',
-      ['neo4j_visit' => intval($neo4j_visit), 'neo4j_belief' => intval($neo4j_belief)]
+      'MATCH (f:Fingerprint)-[r:' . $previous_verb . ']->(b:Belief) WHERE ID(f)=$neo4j_fingerprint AND ID(b)=$neo4j_belief WITH r DELETE r',
+      ['neo4j_fingerprint' => intval($neo4j_fingerprint), 'neo4j_belief' => intval($neo4j_belief)]
     );
     return $statement;
   } else {
