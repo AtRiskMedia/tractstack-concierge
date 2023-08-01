@@ -361,7 +361,7 @@ function processEventStream($jwt, $payload)
               }
             } else {
               // must insert into SQL and push to Neo4j
-              $query = "INSERT INTO " . $heldbeliefs_table_name . " SET belief_id = :belief_id, fingerprint_id = :fingerprint_id, verb = :verb, object = :object";
+              $query = "INSERT INTO " . $heldbeliefs_table_name . " SET belief_id = :belief_id, fingerprint_id = :fingerprint_id, verb = :verb, object = :object, updated_at=NOW()";
               $stmt = $conn->prepare($query);
               $stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
               $stmt->bindParam(':fingerprint_id', $fingerprint_id);
