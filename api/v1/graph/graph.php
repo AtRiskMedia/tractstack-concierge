@@ -2,7 +2,7 @@
 
 require "../../../vendor/autoload.php";
 
-include_once '../../common/profile.php';
+include_once '../../common/events.php';
 include_once '../../common/database.php';
 include_once '../../common/neo4j.php';
 
@@ -29,9 +29,6 @@ header("Content-Type: application/json; charset=UTF-8");
 // defaults
 $secret_key = SECRET_KEY;
 
-// get POST payload
-$data = json_decode(file_get_contents("php://input"));
-
 // response
 $http_response_code = 401;
 
@@ -46,23 +43,19 @@ $jwt = isset($arr[1]) ? $arr[1] : false;
 if ($jwt) {
   try {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
-    if (isset($data)) {
-      if (isset($data->firstname, $data->codeword, $data->persona, $data->email, $data->init))
-        if ($data->init)
-          error_log('init');
-        else error_log('save');
-      if ($data->init)
-        $http_response_code = initProfile($decoded->data, $data);
-      else
-        $http_response_code = saveProfile($decoded->data, $data);
-    } else if ($_SERVER['REQUEST_METHOD'] === "GET") {
-      $http_response_code = getProfile($decoded->data);
-    }
+    $http_response_code = 200;
+    $client = neo4j_connect();
+    $graph_json = neo4j_getGraph($client, $conn);
+    echo json_encode($graph_json);
   } catch (Exception $e) {
+    error_log($e->getMessage());
     echo json_encode(array(
       "message" => "Access denied.",
       "error" => $e->getMessage()
     ));
+    http_response_code(401);
+    die();
   }
 }
+
 http_response_code($http_response_code);

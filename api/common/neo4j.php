@@ -356,7 +356,7 @@ function neo4j_storyFragment_contains_corpus($neo4j_storyFragment, $neo4j_corpus
   return $statement;
 }
 
-function neo4j_getGraph($client, $conn, $visit_id)
+function neo4j_getUserGraph($client, $conn, $visit_id)
 {
   if (MODE == "DEV") return null;
   $neo4j_visit = false;
@@ -382,4 +382,18 @@ function neo4j_getGraph($client, $conn, $visit_id)
     return $results;
   }
   return null;
+}
+
+function neo4j_getGraph($client)
+{
+  if (MODE == "DEV") return null;
+  $results = $client->writeTransaction(static function (TransactionInterface $tsx) {
+    $results = $tsx->run(
+      'MATCH
+     (t:TractStack)-[r]-(s:StoryFragment) RETURN *',
+      []
+    );
+    return $results;
+  });
+  return $results;
 }

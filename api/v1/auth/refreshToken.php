@@ -12,7 +12,7 @@ use \Firebase\JWT\JWT;
 
 // who doesn't love CORS?
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? false;
-header('Access-Control-Allow-Origin: ' . $httpOrigin);
+//header('Access-Control-Allow-Origin: ' . $httpOrigin);
 header('Access-Control-Allow-Credentials: true');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');

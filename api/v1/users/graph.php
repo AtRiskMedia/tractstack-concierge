@@ -14,7 +14,7 @@ use \Firebase\JWT\JWT;
 
 // who doesn't love CORS?
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? false;
-header('Access-Control-Allow-Origin: ' . $httpOrigin);
+//header('Access-Control-Allow-Origin: ' . $httpOrigin);
 header('Access-Control-Allow-Credentials: true');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Methods: POST, GET, DELETE, PUT, PATCH, OPTIONS');
@@ -45,7 +45,7 @@ if ($jwt) {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     $http_response_code = 200;
     $client = neo4j_connect();
-    $graph_json = neo4j_getGraph($client, $conn, $decoded->data->visit_id);
+    $graph_json = neo4j_getUserGraph($client, $conn, $decoded->data->visit_id);
     echo json_encode($graph_json);
   } catch (Exception $e) {
     error_log($e->getMessage());

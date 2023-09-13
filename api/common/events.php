@@ -57,8 +57,6 @@ function processEventStream($jwt, $payload)
   if (isset($nodes)) {
     // check each node in this payload
     // is node in corpus + parents table? 
-    // is node + parent relationship merged to graph?
-    // is merged id in corpus table?
     //
     // do look-up of each id in eventStream payload
     foreach ($nodes as $id => $node) {
