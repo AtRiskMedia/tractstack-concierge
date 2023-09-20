@@ -27,8 +27,8 @@ function processEventStream($jwt, $payload)
   $ids = [];
   $neo4j_corpus_ids = [];
   $sql_corpus_ids = [];
-  $sql_corpus_parents_ids = [];
-  $parents_known = [];
+  //$sql_corpus_parents_ids = [];
+  //$parents_known = [];
   $neo4j_merged_corpus_to_update_sql = [];
 
   // first get neo4j id for visit
@@ -152,7 +152,7 @@ function processEventStream($jwt, $payload)
             break;
 
           case "Belief": // for a belief, must also update SQL table 
-            $neo4j_object_id = neo4j_merge_belief($client, $id, $node->title);
+            $neo4j_object_id = neo4j_merge_belief($client, $id);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
             $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $node->parentId, $neo4j_object_id, $in_sql, $parent_in_sql];
             break;
@@ -333,7 +333,18 @@ function processEventStream($jwt, $payload)
               $previous_verb = isset($row['verb']) ? $row['verb'] : false;
               $previous_verb_object = isset($row['object']) ? $row['object'] : false;
             }
-            if ($previous_verb && $previous_verb_object) {
+            if ($previous_verb && $verb === 'UNSET') {
+              // must update SQL and merge Neo4j
+              $query = "DELETE FROM " . $heldbeliefs_table_name .
+                " WHERE belief_id = :belief_id AND fingerprint_id = :fingerprint_id";
+              $stmt = $conn->prepare($query);
+              $stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
+              $stmt->bindParam(':fingerprint_id', $fingerprint_id);
+              if (!$stmt->execute()) {
+                http_response_code(500);
+                die();
+              }
+            } else if ($previous_verb && $previous_verb_object) {
               // must insert SQL and merge Neo4j ** e.g. verb = IDENTIFY_AS; verb doesn't change, but object does
               $query = "UPDATE " . $heldbeliefs_table_name .
                 " SET object = :object, updated_at=NOW() WHERE belief_id = :belief_id AND fingerprint_id = :fingerprint_id";
@@ -375,10 +386,13 @@ function processEventStream($jwt, $payload)
             if ($previous_verb) {
               $statement = neo4j_merge_belief_remove_action($neo4j_fingerprint_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
+              else error_log('bad on Remove Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
-            $statement = neo4j_merge_belief_action($neo4j_fingerprint_id, $neo4j_object_id, $verb, $object);
-            if ($statement) $actions[] = $statement;
-            else error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
+            if ($verb !== 'UNSET') {
+              $statement = neo4j_merge_belief_action($neo4j_fingerprint_id, $neo4j_object_id, $verb, $object);
+              if ($statement) $actions[] = $statement;
+              else error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
+            }
           } else
             error_log('bad b ' . $id . " " . json_encode($payload));
           break;

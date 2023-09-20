@@ -115,13 +115,13 @@ function neo4j_merge_corpus($client, $objectId, $objectName, $objectType)
   return null;
 }
 
-function neo4j_merge_belief($client, $beliefId, $title)
+function neo4j_merge_belief($client, $beliefId)
 {
   if (MODE == "DEV") return null;
-  $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($beliefId, $title) {
+  $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($beliefId) {
     $result = $tsx->run(
-      'MERGE (b:Belief {belief_id: $beliefId, title: $title}) return ID(b)',
-      ['beliefId' => $beliefId, 'title' => $title]
+      'MERGE (b:Belief {belief_id: $beliefId}) return ID(b)',
+      ['beliefId' => $beliefId]
     );
     return $result->first()->get('ID(b)');
   });
