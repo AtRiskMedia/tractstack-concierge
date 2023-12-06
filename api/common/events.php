@@ -10,6 +10,7 @@ function processEventStream($jwt, $payload)
   $visits_table_name = 'visits';
   $fingerprints_table_name = 'fingerprints';
   $corpus_table_name = 'corpus';
+  $actions_table_name = 'actions';
   $parents_table_name = 'parents';
   $heldbeliefs_table_name = 'heldbeliefs';
 
@@ -30,7 +31,6 @@ function processEventStream($jwt, $payload)
   //$sql_corpus_parents_ids = [];
   //$parents_known = [];
   $neo4j_merged_corpus_to_update_sql = [];
-
   // first get neo4j id for visit
   if ($fingerprint_id && $visit_id) {
     $is_merged_query = "SELECT v.merged as visits_merged, f.merged as fingerprint_merged FROM " . $visits_table_name . " v LEFT JOIN " . $fingerprints_table_name . " f ON v.fingerprint_id = f.id WHERE v.id = :visit_id";
@@ -70,35 +70,37 @@ function processEventStream($jwt, $payload)
       }, array_keys($ids)),
       $ids
     );
-    $in_placeholders = implode(',', array_keys($idsArray));
-    $merged_check_query = "SELECT c.id as sql_id,c.object_id,c.merged, p.id as parent_sql_id, p.parent_id as parent_id, pj.merged as parent_merged FROM " . $corpus_table_name .
-      " as c LEFT JOIN " . $parents_table_name . " as p ON " .
-      " p.object_id = c.id " .
-      " LEFT JOIN " . $corpus_table_name . " as pj ON " .
-      " p.parent_id = pj.id" .
-      " WHERE c.object_id IN ( " . $in_placeholders . " )";
-    $merged_check_stmt = $conn->prepare($merged_check_query);
-    if (!$merged_check_stmt->execute(array_merge($filter, $idsArray))) {
-      die();
-    } else {
-      $rows = $merged_check_stmt->fetchAll();
-      foreach ($rows as $row) {
-        // this payload should include all parents themselves as nodes
-        $sql_id = isset($row['sql_id']) ? $row['sql_id'] : false;
-        $object_id = isset($row['object_id']) ? $row['object_id'] : false;
-        $merged = isset($row['merged']) ? $row['merged'] : false;
-        $parent_sql_id = isset($row['parent_sql_id']) ? $row['parent_sql_id'] : false;
-        $parent_id = isset($row['parent_id']) ? $row['parent_id'] : false;
-        $parent_merged = isset($row['parent_merged']) ? $row['parent_merged'] : false;
-        $key = $object_id . '--' . $parent_id;
-        if ($sql_id)
-          $sql_corpus_ids[$object_id] = $sql_id;
-        if ($parent_sql_id)
-          $sql_corpus_ids[$key] = $parent_sql_id;
-        if ($merged)
-          $neo4j_corpus_ids[$object_id] = $merged;
-        if ($parent_merged)
-          $neo4j_corpus_ids[$key] = $parent_merged;
+    if (count($idsArray)) {
+      $in_placeholders = implode(',', array_keys($idsArray));
+      $merged_check_query = "SELECT c.id as sql_id,c.object_id,c.merged, p.id as parent_sql_id, p.parent_id as parent_id, pj.merged as parent_merged FROM " . $corpus_table_name .
+        " as c LEFT JOIN " . $parents_table_name . " as p ON " .
+        " p.object_id = c.id " .
+        " LEFT JOIN " . $corpus_table_name . " as pj ON " .
+        " p.parent_id = pj.id" .
+        " WHERE c.object_id IN ( " . $in_placeholders . " )";
+      $merged_check_stmt = $conn->prepare($merged_check_query);
+      if (!$merged_check_stmt->execute(array_merge($filter, $idsArray))) {
+        die();
+      } else {
+        $rows = $merged_check_stmt->fetchAll();
+        foreach ($rows as $row) {
+          // this payload should include all parents themselves as nodes
+          $sql_id = isset($row['sql_id']) ? $row['sql_id'] : false;
+          $object_id = isset($row['object_id']) ? $row['object_id'] : false;
+          $merged = isset($row['merged']) ? $row['merged'] : false;
+          $parent_sql_id = isset($row['parent_sql_id']) ? $row['parent_sql_id'] : false;
+          $parent_id = isset($row['parent_id']) ? $row['parent_id'] : false;
+          $parent_merged = isset($row['parent_merged']) ? $row['parent_merged'] : false;
+          $key = $object_id . '--' . $parent_id;
+          if ($sql_id)
+            $sql_corpus_ids[$object_id] = $sql_id;
+          if ($parent_sql_id)
+            $sql_corpus_ids[$key] = $parent_sql_id;
+          if ($merged)
+            $neo4j_corpus_ids[$object_id] = $merged;
+          if ($parent_merged)
+            $neo4j_corpus_ids[$key] = $parent_merged;
+        }
       }
     }
     $neo4j_corpus_ids_merged = $neo4j_corpus_ids;
@@ -109,6 +111,7 @@ function processEventStream($jwt, $payload)
     // -- merge each node to neo4j, get merged id
     // -- if not in sql, flag for add
     // -- if already in_sql but has additional_parent, flag to add edge in neo4j
+
     foreach ($nodes as $id => $node) {
       $in_sql = false;
       $parent_in_sql = false;
@@ -124,7 +127,9 @@ function processEventStream($jwt, $payload)
           case "Pane":
             $neo4j_object_id = neo4j_merge_corpus($client, $id, $node->title, $node->type);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, $node->type, $node->parentId, $neo4j_object_id, $in_sql, $parent_in_sql];
+            $thisParent = isset($node->parentId) ? $node->parentId : null;
+            $neo4j_merged_corpus_to_update_sql[$id] =
+              [$thisTitleTrimmed, $id, $node->type, $thisParent, $neo4j_object_id, $in_sql, $parent_in_sql];
             break;
 
           case "StoryFragment":
@@ -174,7 +179,7 @@ function processEventStream($jwt, $payload)
         switch ($node->type) {
           case "Pane": // StoryFragment :CONTAINS Pane ... or TractStack :CONTAINS Pane if context
             $neo4j_object_id = $neo4j_corpus_ids[$id];
-            $neo4j_storyFragment_id = $neo4j_corpus_ids[$node->parentId];
+            $neo4j_storyFragment_id = isset($node->parentId, $neo4j_corpus_ids[$node->parentId]) ? $neo4j_corpus_ids[$node->parentId] : null;
             if ($neo4j_object_id && $neo4j_storyFragment_id) {
               $statement = neo4j_storyFragment_contains_corpus($neo4j_storyFragment_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
@@ -299,7 +304,19 @@ function processEventStream($jwt, $payload)
       $id = isset($event->id) ? $event->id : null;
       $type = isset($event->type) ? $event->type : null;
       $score = isset($event->score) ? $event->score : null;
+
+      if ($type !== "Belief" && isset($verb, $visit_id, $fingerprint_id, $id, $sql_corpus_ids, $sql_corpus_ids[$id])) {
+        // save action to table
+        $action_merge_query = "INSERT INTO " . $actions_table_name .
+          " (object_id, visit_id, fingerprint_id, verb )" .
+          " VALUES (?,?,?,?)";
+        $action_merge_stmt = $conn->prepare($action_merge_query);
+        $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb];
+        $action_merge_stmt->execute($thisData);
+      }
+
       switch ($type) {
+        case "StoryFragment": // Visit :VERB* Corpus
         case "Pane": // Visit :VERB* Corpus
         case "Context": // Visit :VERB* Corpus
         case "H5P": // Visit :VERB* Corpus
@@ -309,7 +326,7 @@ function processEventStream($jwt, $payload)
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB* ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           } else
-            error_log('bad pch? ' . $id . " " . json_encode($payload));
+            error_log(' !!!!! bad ingest ' . $id . " " . json_encode($payload) . " !!!!! ");
           break;
 
         case "MenuItem": // Visit :Clicks MenuItem

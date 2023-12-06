@@ -8,17 +8,17 @@ define('NEO4J_URI', $_ENV['NEO4J_URI']);
 define('NEO4J_USER', $_ENV['NEO4J_USER']);
 define('MODE', $_ENV['MODE']);
 define('HELDBELIEFS',  array(
-  "STRONGLY_AGREE",
-  "AGREE",
-  "NEITHER_AGREE_NOR_DISAGREE",
-  "DISAGREE",
-  "STRONGLY_DISAGREE",
+  "STRONGLY_AGREES",
+  "AGREES",
+  "NEITHER_AGREES_NOR_DISAGREES",
+  "DISAGREES",
+  "STRONGLY_DISAGREES",
   "INTERESTED",
   "NOT_INTERESTED",
-  "YES",
-  "NO",
-  "TRUE",
-  "FALSE",
+  "BELIEVES_YES",
+  "BELIEVES_NO",
+  "BELIEVES_TRUE",
+  "BELIEVES_FALSE",
 ));
 
 use Laudis\Neo4j\Authentication\Authenticate;
@@ -240,6 +240,8 @@ function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
   if (MODE == "DEV") return null;
   $created_at = time();
   switch ($relationship) {
+    case "ENTERED":
+    case "DISCOVERED":
     case "CLICKED":
     case "READ":
     case "GLOSSED":
@@ -261,7 +263,7 @@ function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
       break;
 
     default:
-      error_log('missed on ' . $relationship);
+      error_log('MISS ON ' . $relationship);
   }
 }
 
