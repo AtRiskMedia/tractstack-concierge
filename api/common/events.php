@@ -320,8 +320,8 @@ function processEventStream($jwt, $payload)
         case "Pane": // Visit :VERB* Corpus
         case "Context": // Visit :VERB* Corpus
         case "H5P": // Visit :VERB* Corpus
-          if (isset($neo4j_corpus_ids[$id])) {
-            $neo4j_object_id = $neo4j_corpus_ids[$id];
+          if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
+            $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB* ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
@@ -330,8 +330,8 @@ function processEventStream($jwt, $payload)
           break;
 
         case "MenuItem": // Visit :Clicks MenuItem
-          if (isset($neo4j_corpus_ids[$id])) {
-            $neo4j_object_id = $neo4j_corpus_ids[$id];
+          if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
+            $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             $statement = neo4j_merge_menuitem_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :CLICKED MenuItem ' . $neo4j_visit_id . "   " . $neo4j_object_id);
@@ -340,7 +340,7 @@ function processEventStream($jwt, $payload)
           break;
 
         case "Belief": // Fingerprint :VERB* Belief
-          if (isset($neo4j_corpus_ids[$id], $sql_corpus_ids[$id])) {
+          if (isset($sql_corpus_ids[$id]) && (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id]))) {
             $has_belief_query = "SELECT verb, object FROM " . $heldbeliefs_table_name . " WHERE fingerprint_id = :fingerprint_id AND belief_id = :belief_id";
             $has_belief_stmt = $conn->prepare($has_belief_query);
             $has_belief_stmt->bindParam(':fingerprint_id', $fingerprint_id);
@@ -399,7 +399,7 @@ function processEventStream($jwt, $payload)
               }
             }
             // now merge to neo4j
-            $neo4j_object_id = $neo4j_corpus_ids[$id];
+            $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             if ($previous_verb) {
               $statement = neo4j_merge_belief_remove_action($neo4j_fingerprint_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
@@ -415,8 +415,8 @@ function processEventStream($jwt, $payload)
           break;
 
         case "Impression": // Visit :Clicks Impression
-          if (isset($neo4j_corpus_ids[$id])) {
-            $neo4j_object_id = $neo4j_corpus_ids[$id];
+          if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
+            $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             $statement = neo4j_merge_impression_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :CLICKED Impression ' . $neo4j_visit_id . "   " . $neo4j_object_id);
