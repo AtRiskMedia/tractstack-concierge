@@ -82,7 +82,7 @@ function processEventStream($jwt, $payload)
       if (!$merged_check_stmt->execute(array_merge($filter, $idsArray))) {
         die();
       } else {
-        $rows = $merged_check_stmt->fetchAll();
+        $rows = $merged_check_stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as $row) {
           // this payload should include all parents themselves as nodes
           $sql_id = isset($row['sql_id']) ? $row['sql_id'] : false;
@@ -325,8 +325,7 @@ function processEventStream($jwt, $payload)
             $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB* ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
-          } else
-            error_log(' !!!!! bad ingest ' . $id . " " . json_encode($payload) . " !!!!! ");
+          }
           break;
 
         case "MenuItem": // Visit :Clicks MenuItem
@@ -335,8 +334,7 @@ function processEventStream($jwt, $payload)
             $statement = neo4j_merge_menuitem_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :CLICKED MenuItem ' . $neo4j_visit_id . "   " . $neo4j_object_id);
-          } else
-            error_log('bad mi ' . $id . " " . json_encode($payload));
+          }
           break;
 
         case "Belief": // Fingerprint :VERB* Belief
@@ -410,8 +408,7 @@ function processEventStream($jwt, $payload)
               if ($statement) $actions[] = $statement;
               else error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
-          } else
-            error_log('bad b ' . $id . " " . json_encode($payload));
+          }
           break;
 
         case "Impression": // Visit :Clicks Impression
@@ -420,8 +417,7 @@ function processEventStream($jwt, $payload)
             $statement = neo4j_merge_impression_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :CLICKED Impression ' . $neo4j_visit_id . "   " . $neo4j_object_id);
-          } else
-            error_log('bad i ' . $id . " " . json_encode($payload));
+          }
           break;
 
         default:
