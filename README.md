@@ -102,11 +102,13 @@ CREATE TABLE heldbeliefs(
 CREATE TABLE actions(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   object_id INT(11) unsigned NOT NULL,
+  parent_id INT(11) unsigned,
   fingerprint_id INT(11) unsigned NOT NULL,
   visit_id INT(11) unsigned NOT NULL,
   verb VARCHAR(40),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_actions_object_id` FOREIGN KEY (object_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_actions_parent_id` FOREIGN KEY (parent_id) REFERENCES corpus (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_action_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_action_visit` FOREIGN KEY (visit_id) REFERENCES visits (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
