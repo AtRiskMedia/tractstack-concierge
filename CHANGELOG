@@ -35,3 +35,8 @@
 [1.1.4] - 2023-12-06
 
 - Full tune-up
+
+
+[1.1.5] - 2023-12-10
+
+- More tune-up; ensuring 1 to many on parents
