@@ -40,3 +40,8 @@
 [1.1.5] - 2023-12-10
 
 - More tune-up; ensuring 1 to many on parents
+
+
+[1.1.6] - 2023-12-11
+
+- Added more builder endpoints

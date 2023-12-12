@@ -44,7 +44,7 @@ $jwt = isset($arr[1]) ? $arr[1] : false;
 
 if ($jwt) {
   try {
-    //$decoded = JWT::decode($jwt, $secret_key, array('HS256'));
+    $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     $http_response_code = getStoryFragmentActivitySwarm();
   } catch (Exception $e) {
     echo json_encode(array(
