@@ -89,7 +89,8 @@ function getStoryFragmentActivitySwarm()
     " sum((case when a.verb='CLICKED' and a.object_id=p.id then 1 else 0 end)) as clicked," .
     " sum((case when a.verb='READ' and a.object_id=p.id then 1 else 0 end)) as red," .
     " sum((case when a.verb='GLOSSED' and a.object_id=p.id then 1 else 0 end)) as glossed," .
-    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered from " . $actions_table_name . " as a" .
+    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered " .
+    " from " . $actions_table_name . " as a" .
     " left join " . $corpus_table_name . " as sf on a.parent_id=sf.id left join " . $corpus_table_name . " as p on a.object_id=p.id" .
     " where sf.object_type='StoryFragment' group by storyFragmentId;";
   $activity_stmt = $conn->prepare($activity_query);
@@ -121,7 +122,11 @@ function getStoryFragmentDaysSince()
 
   // initial SQL lookup
   $activity_query = "select sf.object_id as storyFragmentId, sf.object_name as title," .
-    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity" .
+    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity," .
+    " sum((case when a.verb='CLICKED' and a.parent_id=sf.id then 1 else 0 end)) as clicked," .
+    " sum((case when a.verb='READ' and a.parent_id=sf.id then 1 else 0 end)) as red," .
+    " sum((case when a.verb='GLOSSED' and a.parent_id=sf.id then 1 else 0 end)) as glossed," .
+    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered " .
     " from " . $actions_table_name . " as a" .
     " left join " . $corpus_table_name . " as sf on a.parent_id=sf.id" .
     " group by storyFragmentId;";
@@ -155,7 +160,10 @@ function getPanesDaysSince()
 
   // initial SQL lookup
   $activity_query = "select p.object_id as paneId, p.object_name as title," .
-    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity" .
+    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity," .
+    " sum((case when a.verb='CLICKED' and a.object_id=p.id then 1 else 0 end)) as clicked," .
+    " sum((case when a.verb='READ' and a.object_id=p.id then 1 else 0 end)) as red," .
+    " sum((case when a.verb='GLOSSED' and a.object_id=p.id then 1 else 0 end)) as glossed" .
     " from " . $actions_table_name . " as a" .
     " left join " . $corpus_table_name . " as p on a.object_id=p.id" .
     " group by paneId;";
