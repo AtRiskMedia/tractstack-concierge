@@ -89,7 +89,8 @@ function getStoryFragmentActivitySwarm()
     " sum((case when a.verb='CLICKED' and a.object_id=p.id then 1 else 0 end)) as clicked," .
     " sum((case when a.verb='READ' and a.object_id=p.id then 1 else 0 end)) as red," .
     " sum((case when a.verb='GLOSSED' and a.object_id=p.id then 1 else 0 end)) as glossed," .
-    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered " .
+    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered," .
+    " sum((case when a.verb='CONNECTED' and a.parent_id=sf.id then 1 else 0 end)) as discovered" .
     " from " . $actions_table_name . " as a" .
     " left join " . $corpus_table_name . " as sf on a.parent_id=sf.id left join " . $corpus_table_name . " as p on a.object_id=p.id" .
     " where sf.object_type='StoryFragment' group by storyFragmentId;";
@@ -126,7 +127,8 @@ function getStoryFragmentDaysSince()
     " sum((case when a.verb='CLICKED' and a.parent_id=sf.id then 1 else 0 end)) as clicked," .
     " sum((case when a.verb='READ' and a.parent_id=sf.id then 1 else 0 end)) as red," .
     " sum((case when a.verb='GLOSSED' and a.parent_id=sf.id then 1 else 0 end)) as glossed," .
-    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered " .
+    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered," .
+    " sum((case when a.verb='CONNECTED' and a.parent_id=sf.id then 1 else 0 end)) as discovered" .
     " from " . $actions_table_name . " as a" .
     " left join " . $corpus_table_name . " as sf on a.parent_id=sf.id" .
     " group by storyFragmentId;";
@@ -181,6 +183,122 @@ function getPanesDaysSince()
   }
   echo json_encode(array(
     "data" => null,
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}
+
+function getRecentDailyActivity()
+{
+  $databaseService = new DatabaseService();
+  $conn = $databaseService->getConnection();
+  $actions_table_name = 'actions';
+
+  // initial SQL lookup
+  $activity_query = "select datediff(now(),created_at) as daysSince," .
+    " sum((case when verb='ENTERED' then 1 else 0 end)) as entered," .
+    " sum((case when verb='GLOSSED' then 1 else 0 end)) as glossed," .
+    " sum((case when verb='READ' then 1 else 0 end)) as red," .
+    " sum((case when verb='CLICKED' then 1 else 0 end)) as clicked," .
+    " sum((case when verb='CONNECTED' then 1 else 0 end)) as discovered" .
+    " from " . $actions_table_name .
+    " where DATE(created_at) >= CURDATE() - INTERVAL 14 DAY" .
+    " group by DATE(created_at);";
+  $activity_stmt = $conn->prepare($activity_query);
+
+  if ($activity_stmt->execute()) {
+    $rows = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(array(
+      "data" => json_encode($rows),
+      "message" => "Success.",
+      "error" => null
+    ));
+    return (200);
+  } else {
+    return (500);
+  }
+  echo json_encode(array(
+    "data" => null,
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}
+
+function getDashboardPayloads()
+{
+  $databaseService = new DatabaseService();
+  $conn = $databaseService->getConnection();
+  $actions_table_name = 'actions';
+  $corpus_table_name = 'corpus';
+
+  $activity_query = "select datediff(now(),created_at) as daysSince," .
+    " sum((case when verb='ENTERED' then 1 else 0 end)) as entered," .
+    " sum((case when verb='GLOSSED' then 1 else 0 end)) as glossed," .
+    " sum((case when verb='READ' then 1 else 0 end)) as red," .
+    " sum((case when verb='CLICKED' then 1 else 0 end)) as clicked," .
+    " sum((case when verb='CONNECTED' then 1 else 0 end)) as discovered" .
+    " from " . $actions_table_name .
+    " where DATE(created_at) >= CURDATE() - INTERVAL 14 DAY" .
+    " group by DATE(created_at);";
+  $activity_stmt = $conn->prepare($activity_query);
+  if ($activity_stmt->execute()) {
+    $recentDailyActivity = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+  } else {
+    return (500);
+  }
+
+  $activity_query = "select sf.object_id as storyFragmentId, sf.object_name as title," .
+    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity," .
+    " sum((case when a.verb='CLICKED' and a.object_id=p.id then 1 else 0 end)) as clicked," .
+    " sum((case when a.verb='READ' and a.object_id=p.id then 1 else 0 end)) as red," .
+    " sum((case when a.verb='GLOSSED' and a.object_id=p.id then 1 else 0 end)) as glossed," .
+    " sum((case when a.verb='ENTERED' and a.object_id=sf.id then 1 else 0 end)) as entered," .
+    " sum((case when a.verb='CONNECTED' and a.parent_id=sf.id then 1 else 0 end)) as discovered" .
+    " from " . $actions_table_name . " as a" .
+    " left join " . $corpus_table_name . " as sf on a.parent_id=sf.id left join " . $corpus_table_name . " as p on a.object_id=p.id" .
+    " where sf.object_type='StoryFragment' group by storyFragmentId;";
+  $activity_stmt = $conn->prepare($activity_query);
+  if ($activity_stmt->execute()) {
+    $storyFragmentActivitySwarm = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+  } else {
+    return (500);
+  }
+
+  $activity_query = "select p.object_id as paneId, p.object_name as title," .
+    " timestampdiff(hour, max(a.created_at),now()) as hours_since_activity," .
+    " sum((case when a.verb='CLICKED' and a.object_id=p.id then 1 else 0 end)) as clicked," .
+    " sum((case when a.verb='READ' and a.object_id=p.id then 1 else 0 end)) as red," .
+    " sum((case when a.verb='GLOSSED' and a.object_id=p.id then 1 else 0 end)) as glossed" .
+    " from " . $actions_table_name . " as a" .
+    " left join " . $corpus_table_name . " as p on a.object_id=p.id" .
+    " where p.object_type='Pane'" .
+    " group by paneId;";
+  $activity_stmt = $conn->prepare($activity_query);
+  if ($activity_stmt->execute()) {
+    $paneActivitySwarm = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+  } else {
+    return (500);
+  }
+
+  $activity_query = "select count(distinct(id)) as uniqueSessions, count(distinct(utmSource))-1 as uniqueUtmSource," .
+    " count(distinct(utmCampaign))-1 as uniqueUtmCampaign, count(distinct(utmTerm))-1 as uniqueUtmTerm" .
+    " from visits WHERE DATE(updated_at) >= CURDATE() - INTERVAL 7 DAY;";
+  $activity_stmt = $conn->prepare($activity_query);
+  if ($activity_stmt->execute()) {
+    $recentMetrics = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
+  } else {
+    return (500);
+  }
+
+  echo json_encode(array(
+    "data" => json_encode(array(
+      "recentDailyActivity" => $recentDailyActivity,
+      "storyFragmentActivitySwarm" => $storyFragmentActivitySwarm,
+      "paneActivitySwarm" => $paneActivitySwarm,
+      "recentMetrics" => $recentMetrics
+    )),
     "message" => "Success.",
     "error" => null
   ));

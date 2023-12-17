@@ -56,7 +56,7 @@ function processEventStream($jwt, $payload)
   $nodes = $payload->nodes;
   if (isset($nodes)) {
     // check each node in this payload
-    // is node in corpus + parents table? 
+    // is node in corpus table?
     //
     // do look-up of each id in eventStream payload
     foreach ($nodes as $id => $node) {
@@ -101,26 +101,26 @@ function processEventStream($jwt, $payload)
     // -- merge each node to neo4j, get merged id
     // -- if not in sql, flag for add
     // -- if already in_sql but has additional_parent, flag to add edge in neo4j
-
     foreach ($nodes as $id => $node) {
       $in_sql = false;
       $parent_in_sql = false;
       if (isset($sql_corpus_ids[$id])) $in_sql = $sql_corpus_ids[$id];
-      if (isset($node->parentId, $sql_corpus_ids[$node->parentId])) {
+      if (isset($node->parentId, $sql_corpus_ids[$node->parentId]) && !empty($node->parentId)) {
         $parent_in_sql = $sql_corpus_ids[$node->parentId];
         //$thisKey =  $id . '--' . $node->parentId;
         //if (isset($sql_corpus_ids[$thisKey])) 
-      } else if (isset($node->parentId)) {
+      } else if (isset($node->parentId) && !empty($node->parentId)) {
         // could be parent is in *this* payload
         // it will be available in $sql_corpus_ids when we need it
         $foundParent = false;
         foreach ($nodes as $innerId => $innerNode) {
           if ($innerId === $node->parentId) $foundParent = true;
         }
-        if (!$foundParent)
-          error_log('Parent not found:' . $node->parentId . '  ');
+        if (!$foundParent) {
+          error_log('Parent not found:' . $node->parentId . '  nodes:' . json_encode($nodes) . '       ');
+        }
       }
-      if (!isset($neo4j_corpus_ids[$id]) && isset($node->type)) {
+      if (!isset($neo4j_corpus_ids[$id], $node->type, $node->title) && !empty($node->title)) {
         //node + relationship not yet merged to neo4j; must merge
         $thisTitleTrimmed = substr($node->title, 0, 48);
         switch ($node->type) {
@@ -315,7 +315,8 @@ function processEventStream($jwt, $payload)
         $thisObjectType = $data[2];
         $thisObjectParentId = $data[3];
         $thisObjectNeo4jId = $data[4];
-        $thisObjectSqlId = isset($data[5]) && $data[5] ? $data[5] : $sql_corpus_ids[$thisObjectId];
+        $thisObjectSqlId = (isset($data[5]) && $data[5] ? $data[5] : isset($sql_corpus_ids[$thisObjectId])) ? $sql_corpus_ids[$thisObjectId] : null;
+        if (!$thisObjectSqlId) error_log('no sql id: ' . json_encode($data));
         $thisObjectParentSqlId = $thisObjectParentId ? $sql_corpus_ids[$thisObjectParentId] : null;
         if (
           $thisObjectParentSqlId &&
@@ -376,9 +377,13 @@ function processEventStream($jwt, $payload)
         case "H5P": // Visit :VERB* Corpus
           if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
-            $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
+            if ($verb === 'CONNECTED' && $parentId) {
+              $neo4j_parent_id = isset($neo4j_corpus_ids[$parentId]) ? $neo4j_corpus_ids[$parentId] : $neo4j_corpus_ids_merged[$parentId];
+              $statement = neo4j_merge_action($neo4j_parent_id, $neo4j_object_id, $verb, $score);
+            } else
+              $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
             if ($statement) $actions[] = $statement;
-            else error_log('bad on Visit :VERB* ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
+            else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }
           break;
 

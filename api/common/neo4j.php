@@ -240,6 +240,15 @@ function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
   if (MODE == "DEV") return null;
   $created_at = time();
   switch ($relationship) {
+    case "CONNECTED":
+      // uses first parameter as $neo4j_parent
+      $statement =  Statement::create(
+        'MATCH (c1),(c2) WHERE ID(c1)=$neo4j_corpus AND ID(c2)=$neo4j_parent MERGE (c1)-[:' . $relationship . ']->(c2)',
+        ['neo4j_parent' => intval($neo4j_visit), 'neo4j_corpus' => intval($neo4j_corpus)]
+      );
+      return $statement;
+      break;
+
     case "ENTERED":
     case "DISCOVERED":
     case "CLICKED":

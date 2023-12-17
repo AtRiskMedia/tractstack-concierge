@@ -39,7 +39,6 @@ $conn = $databaseService->getConnection();
 $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? false;
 $arr = explode(" ", $authHeader);
 $jwt = isset($arr[1]) ? $arr[1] : false;
-
 if ($jwt) {
   try {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));

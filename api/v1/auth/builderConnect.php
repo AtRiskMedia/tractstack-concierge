@@ -39,7 +39,6 @@ $databaseService = new DatabaseService();
 $conn = $databaseService->getConnection();
 $fingerprints_table_name = 'fingerprints';
 $tokens_table_name = 'tokens';
-$visits_table_name = 'visits';
 
 // get POST payload
 $data = json_decode(file_get_contents("php://input"));
@@ -76,12 +75,11 @@ if ($secret === $builder_secret_key) {
     }
   }
 
-  // does an active token exist? an active visit?
-  $token_check_query = "SELECT t.id as token_id,aes_decrypt(refreshToken,Password(:secret)) as refreshToken," .
-    " v.id as visit_id FROM " . $tokens_table_name . " as t LEFT JOIN " . $visits_table_name .
-    " as v ON t.fingerprint_id=v.fingerprint_id" .
-    " LEFT JOIN " . $fingerprints_table_name . " as f on v.fingerprint_id=f.id " .
-    " WHERE t.fingerprint_id = :fingerprint_id AND t.valid_until > :now AND TIMESTAMPDIFF(hour, v.updated_at, :now) < 24";
+  // does an active token exist? 
+  $token_check_query = "SELECT t.id as token_id,aes_decrypt(refreshToken,Password(:secret)) as refreshToken" .
+    " FROM " . $tokens_table_name . " as t" .
+    " LEFT JOIN " . $fingerprints_table_name . " as f on t.fingerprint_id=f.id " .
+    " WHERE t.fingerprint_id = :fingerprint_id AND t.valid_until > :now";
   $token_check_stmt = $conn->prepare($token_check_query);
   $token_check_stmt->bindParam(':fingerprint_id', $fingerprint_id);
   $token_check_stmt->bindParam(':secret', $secret_key);
@@ -89,8 +87,6 @@ if ($secret === $builder_secret_key) {
   if ($token_check_stmt->execute()) {
     $row = $token_check_stmt->fetch(PDO::FETCH_ASSOC);
     $token_id = isset($row['token_id']) ? $row['token_id'] : false;
-    $visit_id = isset($row['visit_id']) ? $row['visit_id'] : false;
-    $neo4j_visit_id = isset($row['neo4j_visit_id']) ? $row['neo4j_visit_id'] : false;
     $firstname = isset($row['first_name']) ? $row['first_name'] : false;
     $refreshToken = isset($row['refreshToken']) ? $row['refreshToken'] : false;
     $has_token = is_int($token_id) ? $token_id : false;
@@ -100,40 +96,6 @@ if ($secret === $builder_secret_key) {
     die();
   }
 
-  if (!$visit_id) {
-    // no visit exists; must create
-    $visit_create_query = "INSERT INTO " . $visits_table_name .
-      " SET fingerprint_id = :fingerprint_id,";
-    $visit_create_query .=
-      " created_at = :created_at," .
-      " updated_at = :updated_at," .
-      " merged = FALSE," .
-      " httpReferrer = :httpReferrer," .
-      " httpUserAgent = :httpUserAgent," .
-      " utmSource = :utmSource," .
-      " utmContent = :utmContent," .
-      " utmTerm = :utmTerm," .
-      " utmMedium = :utmMedium," .
-      " utmCampaign = :utmCampaign";
-    $visit_create_stmt = $conn->prepare($visit_create_query);
-    $visit_create_stmt->bindParam(':fingerprint_id', $fingerprint_id);
-    $visit_create_stmt->bindParam(':created_at', $now);
-    $visit_create_stmt->bindParam(':updated_at', $now);
-    $visit_create_stmt->bindParam(':httpReferrer', $httpReferrer);
-    $visit_create_stmt->bindParam(':httpUserAgent', $httpUserAgent);
-    $visit_create_stmt->bindParam(':utmSource', $utmSource);
-    $visit_create_stmt->bindParam(':utmContent', $utmContent);
-    $visit_create_stmt->bindParam(':utmTerm', $utmTerm);
-    $visit_create_stmt->bindParam(':utmMedium', $utmMedium);
-    $visit_create_stmt->bindParam(':utmCampaign', $utmCampaign);
-    if ($visit_create_stmt->execute()) {
-      $visit_id = strval($conn->lastInsertId());
-      //error_log("New visit: " . strval($visit_id));
-    } else {
-      http_response_code(500);
-      die();
-    }
-  }
   if (!$has_token) {
     // no token, must create
     $refreshToken = uniqid();
