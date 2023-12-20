@@ -400,8 +400,10 @@ function neo4j_getGraph($client)
   if (MODE == "DEV") return null;
   $results = $client->writeTransaction(static function (TransactionInterface $tsx) {
     $results = $tsx->run(
-      'MATCH
-     (t:TractStack)-[r]-(s:StoryFragment) RETURN *',
+      'MATCH (c:Corpus), (s:StoryFragment)' .
+        ' OPTIONAL MATCH (s)-[rsf:CONTAINS]->(c) OPTIONAL MATCH (c)-[rc:CONNECTED]->(sf)' .
+        ' OPTIONAL MATCH (c)-[rc:CONNECTED]->(c)' .
+        ' RETURN *',
       []
     );
     return $results;
