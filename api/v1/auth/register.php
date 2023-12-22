@@ -177,7 +177,7 @@ if ($pre_register_stmt->execute()) {
 }
 
 // register new fingerprint
-if (!$fingerprint_registered && !$fingerprint_id) {
+if (!$fingerprint_registered && !($fingerprint_id > -1 )) {
   $query = "INSERT INTO " . $fingerprints_table_name . " SET fingerprint = :fingerprint";
   $stmt = $conn->prepare($query);
   $stmt->bindParam(':fingerprint', $fingerprint);
@@ -215,7 +215,7 @@ if ($token_check_stmt->execute()) {
   die();
 }
 
-if (!$visit_id) {
+if (!($visit_id > -1 )) {
   // no visit exists; must create
   $visit_create_query = "INSERT INTO " . $visits_table_name .
     " SET fingerprint_id = :fingerprint_id,";
@@ -274,10 +274,10 @@ if (!$has_token) {
   }
 }
 // is fingerprint merged?
-if (!$neo4j_fingerprint_id) {
+if (!($neo4j_fingerprint_id > -1)) {
   $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
   //error_log("Merged fingerprint: " . strval($neo4j_fingerprint_id));
-  if ($neo4j_fingerprint_id)
+  if ($neo4j_fingerprint_id > -1)
     $merge = true;
   else $neo4j_fingerprint_id = 0;
 }
@@ -318,7 +318,7 @@ if ($merge) {
 }
 
 // run on every register
-if ($neo4j_fingerprint_id && $neo4j_visit_id) {
+if ($neo4j_fingerprint_id > -1 && $neo4j_visit_id > -1) {
   //error_log("Merged Fingerprint has Visit: " . strval($neo4j_fingerprint_id) . " " . strval($neo4j_visit_id));
   $statement = neo4j_fingerprint_has_visit($neo4j_fingerprint_id, $neo4j_visit_id);
   if ($statement)
@@ -327,13 +327,13 @@ if ($neo4j_fingerprint_id && $neo4j_visit_id) {
 }
 
 // is lead merged to this fingerprint?
-if (!$neo4j_lead_id && $neo4j_fingerprint_id && $lead_id) {
+if (!$neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1 && $lead_id > -1) {
   $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
   //error_log("Merged lead: " . strval($neo4j_lead_id));
   $lead_merge = true;
 }
 
-if ($lead_merge && $neo4j_lead_id && $neo4j_fingerprint_id) {
+if ($lead_merge && $neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1) {
   $statement = neo4j_lead_has_fingerprint($lead_id, $fingerprint_id);
   //error_log("Merged Lead has Fingerprint: " . strval($lead_id) . " " . strval($fingerprint_id));
   if ($statement)
@@ -342,7 +342,7 @@ if ($lead_merge && $neo4j_lead_id && $neo4j_fingerprint_id) {
 }
 
 // known Lead with new Fingerprint
-if ($knownNewFingerprint && $neo4j_lead_id) {
+if ($knownNewFingerprint && $neo4j_lead_id > -1) {
   $set_merged_query = "UPDATE " . $leads_table_name .
     " SET merged=:neo4j_lead_id" .
     " WHERE id = :lead_id";
@@ -360,7 +360,7 @@ if ($knownNewFingerprint && $neo4j_lead_id) {
 }
 
 // load heldBeliefs for this fingerprint_id
-if ($fingerprint_id) {
+if ($fingerprint_id > -1) {
   $belief_stmt = false;
   if ($lead_id) {
     $belief_query = "SELECT c.object_name as slug, c.object_id as id, b.verb, b.object";

@@ -32,7 +32,7 @@ function processEventStream($jwt, $payload)
   //$parents_known = [];
   $neo4j_merged_corpus_to_update_sql = [];
   // first get neo4j id for visit
-  if ($fingerprint_id && $visit_id) {
+  if ($fingerprint_id > -1 && $visit_id > -1) {
     $is_merged_query = "SELECT v.merged as visits_merged, f.merged as fingerprint_merged FROM " . $visits_table_name . " v LEFT JOIN " . $fingerprints_table_name . " f ON v.fingerprint_id = f.id WHERE v.id = :visit_id";
     $is_merged_stmt = $conn->prepare($is_merged_query);
     $is_merged_stmt->bindParam(':visit_id', $visit_id);
@@ -180,7 +180,7 @@ function processEventStream($jwt, $payload)
           case "Pane": // StoryFragment :CONTAINS Pane ... or TractStack :CONTAINS Pane if context
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_storyFragment_id = isset($node->parentId, $neo4j_corpus_ids[$node->parentId]) ? $neo4j_corpus_ids[$node->parentId] : null;
-            if ($neo4j_object_id && $neo4j_storyFragment_id) {
+            if ($neo4j_object_id > -1 && $neo4j_storyFragment_id > -1) {
               $statement = neo4j_storyFragment_contains_corpus($neo4j_storyFragment_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on StoryFragment :CONTAINS Pane' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
@@ -190,7 +190,7 @@ function processEventStream($jwt, $payload)
           case "StoryFragment": // TractStack :CONTAINS StoryFragment
             $neo4j_storyFragment_id = $neo4j_corpus_ids[$id];
             $neo4j_tractStack_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_tractStack_id && $neo4j_storyFragment_id) {
+            if ($neo4j_tractStack_id > -1 && $neo4j_storyFragment_id > -1) {
               $statement = neo4j_tractStack_contains_storyFragment($neo4j_tractStack_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on TractStack :CONTAINS StoryFragment' . "  " . $neo4j_tractStack_id . "   " . $neo4j_storyFragment_id);
@@ -204,7 +204,7 @@ function processEventStream($jwt, $payload)
           case "MenuItem": // MenuItems :LINKS StoryFragment
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_storyFragment_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_object_id && $neo4j_storyFragment_id) {
+            if ($neo4j_object_id > -1 && $neo4j_storyFragment_id > -1) {
               $statement = neo4j_menuitem_links_storyFragment($neo4j_object_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on MenuItem :LINKS StoryFragment' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
@@ -214,7 +214,7 @@ function processEventStream($jwt, $payload)
           case "Belief": // TractStack :CONTAINS Belief
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_tractStack_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_tractStack_id && $neo4j_object_id) {
+            if ($neo4j_tractStack_id > -1 && $neo4j_object_id > -1) {
               $statement = neo4j_tractStack_contains_belief($neo4j_tractStack_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on TractStack :CONTAINS Belief  ' . $neo4j_tractStack_id . "   " . $neo4j_object_id);
@@ -224,7 +224,7 @@ function processEventStream($jwt, $payload)
           case "H5P": // Pane :CONTAINS H5P
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_parent_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_object_id && $neo4j_parent_id) {
+            if ($neo4j_object_id > -1 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_corpus($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on Pane contains H5P ' . $neo4j_object_id . "   " . $neo4j_parent_id);
@@ -234,7 +234,7 @@ function processEventStream($jwt, $payload)
           case "Impression": // Pane :CONTAINS Impression
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_parent_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_object_id && $neo4j_parent_id) {
+            if ($neo4j_object_id >-1 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_impression($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on Pane contains Impression '  . $neo4j_object_id . "   " . $neo4j_parent_id);
