@@ -380,8 +380,9 @@ function processEventStream($jwt, $payload)
             if ($verb === 'CONNECTED' && $parentId) {
               $neo4j_parent_id = isset($neo4j_corpus_ids[$parentId]) ? $neo4j_corpus_ids[$parentId] : $neo4j_corpus_ids_merged[$parentId];
               $statement = neo4j_merge_action($neo4j_parent_id, $neo4j_object_id, $verb, $score);
-            } else
+            } else if ($verb !== 'CONNECTED')
               $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
+            else error_log('ERROR no parent on CONNECTED: '.json_encode($event));
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }
