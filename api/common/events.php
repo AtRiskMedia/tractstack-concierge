@@ -316,7 +316,7 @@ function processEventStream($jwt, $payload)
         $thisObjectParentId = $data[3];
         $thisObjectNeo4jId = $data[4];
         $thisObjectSqlId = (isset($data[5]) && $data[5] ? $data[5] : isset($sql_corpus_ids[$thisObjectId])) ? $sql_corpus_ids[$thisObjectId] : null;
-        if (!$thisObjectSqlId) error_log('no sql id: ' . json_encode($data));
+        if (!$thisObjectSqlId) error_log('          !!!! WARNING no sql id: ' . json_encode($data).' !!!!!!!!!!         ');
         $thisObjectParentSqlId = $thisObjectParentId ? $sql_corpus_ids[$thisObjectParentId] : null;
         if (
           $thisObjectParentSqlId &&
@@ -353,21 +353,29 @@ function processEventStream($jwt, $payload)
       $parentId = isset($event->parentId) ? $event->parentId : null;
       $type = isset($event->type) ? $event->type : null;
       $score = isset($event->score) ? $event->score : null;
+      $thisData = false;
 
       if ($type !== "Belief" && isset($verb, $visit_id, $fingerprint_id, $id, $sql_corpus_ids, $sql_corpus_ids[$id])) {
         // save action to table
-        $action_merge_query = $verb === 'ENTERED' || (isset($parentId) || $parentId) ? "INSERT INTO " . $actions_table_name .
+        $hasParent = false;
+        if ($verb === 'ENTERED') {
+          $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb, $sql_corpus_ids[$id]];
+          $hasParent = true;
+        }
+        else if (isset($parentId, $sql_corpus_ids[$parentId]))
+        {
+          $hasParent = true;
+          $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb, $sql_corpus_ids[$parentId]];
+        }
+        else $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb];
+        $action_merge_query = $hasParent ? "INSERT INTO " . $actions_table_name .
           " (object_id, visit_id, fingerprint_id, verb,parent_id )" .
           " VALUES (?,?,?,?,?)" : "INSERT INTO " . $actions_table_name .
           " (object_id, visit_id, fingerprint_id, verb )" .
           " VALUES (?,?,?,?)";
         $action_merge_stmt = $conn->prepare($action_merge_query);
-        if ($verb === 'ENTERED')
-          $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb, $sql_corpus_ids[$id]];
-        else if (isset($parentId))
-          $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb, $sql_corpus_ids[$parentId]];
-        else $thisData = [$sql_corpus_ids[$id], $visit_id, $fingerprint_id, $verb];
-        $action_merge_stmt->execute($thisData);
+       if($thisData)
+          $action_merge_stmt->execute($thisData);
       }
 
       switch ($type) {
@@ -378,11 +386,12 @@ function processEventStream($jwt, $payload)
           if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             if ($verb === 'CONNECTED' && $parentId) {
-              $neo4j_parent_id = isset($neo4j_corpus_ids[$parentId]) ? $neo4j_corpus_ids[$parentId] : $neo4j_corpus_ids_merged[$parentId];
-              $statement = neo4j_merge_action($neo4j_parent_id, $neo4j_object_id, $verb, $score);
+              if ( isset($neo4j_corpus_ids[$parentId]) ) $neo4j_parent_id = $neo4j_corpus_ids[$parentId];
+              else if( isset($neo4j_corpus_ids_merged[$parentId])) $neo4j_parent_id = $neo4j_corpus_ids_merged[$parentId];
+              if($neo4j_parent_id)
+                $statement = neo4j_merge_action($neo4j_parent_id, $neo4j_object_id, $verb, $score);
             } else if ($verb !== 'CONNECTED')
               $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
-            else error_log('ERROR no parent on CONNECTED: '.json_encode($event));
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }
