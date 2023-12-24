@@ -344,7 +344,6 @@ function processEventStream($jwt, $payload)
 
   if (isset($events)) {
     foreach ($events as $event) {
-      error_log('    EVENT:'.json_encode($event).'      ');
       // process eventStream payload; merge to graph (if not set); add relationship
       $verb = isset($event->verb) ? str_replace(' ', '_', strtoupper($event->verb)) : null;
       $object = isset($event->object) ? str_replace(' ', '_', strtoupper($event->object)) : null;
@@ -408,7 +407,6 @@ function processEventStream($jwt, $payload)
           break;
 
         case "Belief": // Fingerprint :VERB* Belief
-          error_log('         BELIEF                  ');
           if (isset($sql_corpus_ids[$id]) && (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id]))) {
             $has_belief_query = "SELECT verb, object FROM " . $heldbeliefs_table_name . " WHERE fingerprint_id = :fingerprint_id AND belief_id = :belief_id";
             $has_belief_stmt = $conn->prepare($has_belief_query);
@@ -480,11 +478,7 @@ function processEventStream($jwt, $payload)
               else error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
           }
-          else {
-            error_log('BAD');
-          error_log('    '.json_encode($sql_corpus_ids).'   '.json_encode( $neo4j_corpus_ids_merged).'    ');
-          }
-          break;
+         break;
 
         case "Impression": // Visit :Clicks Impression
           if (isset($neo4j_corpus_ids[$id]) || isset($neo4j_corpus_ids_merged[$id])) {
