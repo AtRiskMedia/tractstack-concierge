@@ -410,3 +410,17 @@ function neo4j_getGraph($client)
   });
   return $results;
 }
+
+
+function neo4j_gds_pageranks($client) {
+  /*
+   CALL gds.graph.project("pageRank",["Corpus","Visit","StoryFragment"],["CONNECTED","ENTERED","READ","GLOSSED","CLICKED","CONTAINS"]);
+CALL gds.pageRank.write('pageRank', {
+  maxIterations: 20,
+  dampingFactor: .95,
+  writeProperty: 'pageRank'
+})
+YIELD nodePropertiesWritten, ranIterations;
+CALL gds.graph.drop("pageRank");
+   */
+}
