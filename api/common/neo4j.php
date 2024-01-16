@@ -385,7 +385,7 @@ function neo4j_getUserGraph($client, $conn, $visit_id)
   if ($neo4j_visit) {
     // get graph from neo4j
     $results = $client->writeTransaction(static function (TransactionInterface $tsx) use ($neo4j_visit) {
-      $results = $tsx->run('MATCH (v:Visit)-[r]-(c) WHERE ID(v)=$neo4j_visit OPTIONAL MATCH (c)<-[a:CONTAINS]-(s)<-[d:CONTAINS]-(t) RETURN *', [
+      $results = $tsx->run('MATCH (f:Fingerprint)-[cc]-(v:Visit)-[r]-(c) WHERE ID(v)=$neo4j_visit OPTIONAL MATCH (b:Belief)-[bb]-(f) OPTIONAL MATCH (c)<-[a:CONTAINS]-(s)<-[d:CONTAINS]-(t) RETURN *', [
         'neo4j_visit' => intval($neo4j_visit)
       ]);
       return $results;
