@@ -6,7 +6,7 @@ $dotenv->load();
 define('NEO4J_SECRET', $_ENV['NEO4J_SECRET']);
 define('NEO4J_URI', $_ENV['NEO4J_URI']);
 define('NEO4J_USER', $_ENV['NEO4J_USER']);
-define('MODE', $_ENV['MODE']);
+define('NEO4J_ENABLED', $_ENV['NEO4J_ENABLED']);
 define('HELDBELIEFS',  array(
   "STRONGLY_AGREES",
   "AGREES",
@@ -28,7 +28,7 @@ use Laudis\Neo4j\Contracts\TransactionInterface;
 
 function neo4j_connect()
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $uri = NEO4J_URI;
   $user = NEO4J_USER;
   $password = NEO4J_SECRET;
@@ -42,7 +42,7 @@ function neo4j_connect()
 
 function neo4j_merge_fingerprint($client, $fingerprint_id)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($fingerprint_id) {
     $result = $tsx->run('MERGE (f:Fingerprint {fingerprint_id: $fingerprint_id}) return ID(f)', ['fingerprint_id' => $fingerprint_id]);
     return $result->first()->get('ID(f)');
@@ -53,7 +53,7 @@ function neo4j_merge_fingerprint($client, $fingerprint_id)
 
 function neo4j_merge_lead($client, $lead_id)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($lead_id) {
     $result = $tsx->run('MERGE (l:Lead {lead_id: $lead_id}) return ID(l)', ['lead_id' => $lead_id]);
     return $result->first()->get('ID(l)');
@@ -64,7 +64,7 @@ function neo4j_merge_lead($client, $lead_id)
 
 function neo4j_merge_visit($client, $visit_id, $created_at)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($visit_id, $created_at) {
     $result = $tsx->run('MERGE (v:Visit {visit_id: $visit_id, created_at: $created_at}) return ID(v)', ['visit_id' => $visit_id, 'created_at' => $created_at]);
     return $result->first()->get('ID(v)');
@@ -75,7 +75,7 @@ function neo4j_merge_visit($client, $visit_id, $created_at)
 
 function neo4j_merge_tractstack($client, $objectId, $objectName)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($objectId, $objectName) {
     $result = $tsx->run(
       'MERGE (t:TractStack {object_id: $objectId, object_name: $objectName, object_type: "TractStack"}) return ID(t)',
@@ -89,7 +89,7 @@ function neo4j_merge_tractstack($client, $objectId, $objectName)
 
 function neo4j_merge_storyfragment($client, $objectId, $objectName)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($objectId, $objectName) {
     $result = $tsx->run(
       'MERGE (s:StoryFragment {object_id: $objectId, object_name: $objectName, object_type: "StoryFragment"}) return ID(s)',
@@ -103,7 +103,7 @@ function neo4j_merge_storyfragment($client, $objectId, $objectName)
 
 function neo4j_merge_corpus($client, $objectId, $objectName, $objectType)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($objectId, $objectName, $objectType) {
     $result = $tsx->run(
       'MERGE (c:Corpus {object_id: $objectId, object_name: $objectName, object_type: $objectType}) return ID(c)',
@@ -117,7 +117,7 @@ function neo4j_merge_corpus($client, $objectId, $objectName, $objectType)
 
 function neo4j_merge_belief($client, $beliefId)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($beliefId) {
     $result = $tsx->run(
       'MERGE (b:Belief {belief_id: $beliefId}) return ID(b)',
@@ -131,7 +131,7 @@ function neo4j_merge_belief($client, $beliefId)
 
 function neo4j_merge_menuitem($client, $menuItemId, $title)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($menuItemId, $title) {
     $result = $tsx->run(
       'MERGE (i:MenuItem {menuitem_id: $menuItemId, title: $title}) return ID(i)',
@@ -145,7 +145,7 @@ function neo4j_merge_menuitem($client, $menuItemId, $title)
 
 function neo4j_merge_impression($client, $impressionId, $title)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($impressionId, $title) {
     $result = $tsx->run(
       'MERGE (i:Impression {impression_id: $impressionId, title: $title}) return ID(i)',
@@ -159,7 +159,7 @@ function neo4j_merge_impression($client, $impressionId, $title)
 
 function neo4j_fingerprint_has_visit($neo4j_fingerprint, $neo4j_visit)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (f),(v) WHERE ID(f)=$neo4j_fingerprint AND ID(v)=$neo4j_visit MERGE (f)-[:HAS]->(v)',
     ['neo4j_fingerprint' => intval($neo4j_fingerprint), 'neo4j_visit' => intval($neo4j_visit)]
@@ -169,7 +169,7 @@ function neo4j_fingerprint_has_visit($neo4j_fingerprint, $neo4j_visit)
 
 function neo4j_lead_has_fingerprint($lead_id, $fingerprint_id)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (l:Lead {lead_id:$lead_id}) MATCH (f:Fingerprint {fingerprint_id:$fingerprint_id}) MERGE (l)-[:HAS]->(f)',
     ['fingerprint_id' => strval($fingerprint_id), 'lead_id' => strval($lead_id)]
@@ -179,7 +179,7 @@ function neo4j_lead_has_fingerprint($lead_id, $fingerprint_id)
 
 function neo4j_merge_belief_action($neo4j_fingerprint, $neo4j_belief, $verb, $object = NULL)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   if (!$object && in_array($verb, HELDBELIEFS, true)) {
     $verb = str_replace(' ', '_', $verb);
     $statement =  Statement::create(
@@ -203,7 +203,7 @@ function neo4j_merge_belief_action($neo4j_fingerprint, $neo4j_belief, $verb, $ob
 
 function neo4j_merge_belief_remove_action($neo4j_fingerprint, $neo4j_belief, $previous_verb, $object = null)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   if (in_array($previous_verb, HELDBELIEFS, true) || $object) {
     $statement =  Statement::create(
       'MATCH (f:Fingerprint)-[r:' . $previous_verb . ']->(b:Belief) WHERE ID(f)=$neo4j_fingerprint AND ID(b)=$neo4j_belief WITH r DELETE r',
@@ -217,7 +217,7 @@ function neo4j_merge_belief_remove_action($neo4j_fingerprint, $neo4j_belief, $pr
 
 function neo4j_merge_menuitem_action($neo4j_visit, $neo4j_menuitem)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (v),(i) WHERE ID(v)=$neo4j_visit AND ID(i)=$neo4j_menuitem MERGE (v)-[:CLICKED]->(i)',
     ['neo4j_visit' => intval($neo4j_visit), 'neo4j_menuitem' => intval($neo4j_menuitem)]
@@ -227,7 +227,7 @@ function neo4j_merge_menuitem_action($neo4j_visit, $neo4j_menuitem)
 
 function neo4j_merge_impression_action($neo4j_visit, $neo4j_impression)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (v),(i) WHERE ID(v)=$neo4j_visit AND ID(i)=$neo4j_impression MERGE (v)-[:CLICKED]->(i)',
     ['neo4j_visit' => intval($neo4j_visit), 'neo4j_impression' => intval($neo4j_impression)]
@@ -237,7 +237,7 @@ function neo4j_merge_impression_action($neo4j_visit, $neo4j_impression)
 
 function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $created_at = time();
   switch ($relationship) {
     case "CONNECTED":
@@ -278,7 +278,7 @@ function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
 
 function neo4j_visit_corpus_contains($neo4j_corpus, $neo4j_parent_id)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (p),(c) WHERE ID(p)=$neo4j_parent_id AND ID(c)=$neo4j_corpus MERGE (p)-[:CONTAINS]->(c)',
     [
@@ -291,7 +291,7 @@ function neo4j_visit_corpus_contains($neo4j_corpus, $neo4j_parent_id)
 
 function neo4j_tractStack_contains_storyFragment($neo4j_tractStack, $neo4j_storyFragment)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (t),(s) WHERE ID(t)=$neo4j_tractStack AND ID(s)=$neo4j_storyFragment MERGE (t)-[:CONTAINS]->(s)',
     [
@@ -304,7 +304,7 @@ function neo4j_tractStack_contains_storyFragment($neo4j_tractStack, $neo4j_story
 
 function neo4j_tractStack_contains_belief($neo4j_tractStack, $neo4j_belief)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (t),(b) WHERE ID(t)=$neo4j_tractStack AND ID(b)=$neo4j_belief MERGE (t)-[:CONTAINS]->(b)',
     [
@@ -317,7 +317,7 @@ function neo4j_tractStack_contains_belief($neo4j_tractStack, $neo4j_belief)
 
 function neo4j_menuitem_links_storyFragment($neo4j_menuItem, $neo4j_storyFragment)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (m),(s) WHERE ID(m)=$neo4j_menuItem AND ID(s)=$neo4j_storyFragment MERGE (m)-[:LINKS]->(s)',
     [
@@ -330,7 +330,7 @@ function neo4j_menuitem_links_storyFragment($neo4j_menuItem, $neo4j_storyFragmen
 
 function neo4j_corpus_contains_impression($neo4j_parent, $neo4j_impression)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (c:Corpus),(i:Impression) WHERE ID(c)=$neo4j_parent AND ID(i)=$neo4j_impression MERGE (c)-[:CONTAINS]->(i)',
     [
@@ -343,7 +343,7 @@ function neo4j_corpus_contains_impression($neo4j_parent, $neo4j_impression)
 
 function neo4j_corpus_contains_corpus($neo4j_parent, $neo4j_corpus)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (p:Corpus),(c:Corpus) WHERE ID(p)=$neo4j_parent AND ID(c)=$neo4j_corpus MERGE (p)-[:CONTAINS]->(c)',
     [
@@ -356,7 +356,7 @@ function neo4j_corpus_contains_corpus($neo4j_parent, $neo4j_corpus)
 
 function neo4j_storyFragment_contains_corpus($neo4j_storyFragment, $neo4j_corpus)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
     'MATCH (s:StoryFragment),(c:Corpus) WHERE ID(s)=$neo4j_storyFragment AND ID(c)=$neo4j_corpus MERGE (s)-[:CONTAINS]->(c)',
     [
@@ -369,7 +369,7 @@ function neo4j_storyFragment_contains_corpus($neo4j_storyFragment, $neo4j_corpus
 
 function neo4j_getUserGraph($client, $conn, $visit_id)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $neo4j_visit = false;
   $visits_table_name = 'visits';
   $query = "SELECT merged FROM "
@@ -397,7 +397,7 @@ function neo4j_getUserGraph($client, $conn, $visit_id)
 
 function neo4j_getGraph($client)
 {
-  if (MODE == "DEV") return null;
+  if (!NEO4J_ENABLED) return null;
   $results = $client->writeTransaction(static function (TransactionInterface $tsx) {
     $results = $tsx->run(
       'MATCH (c:Corpus), (s:StoryFragment)' .
