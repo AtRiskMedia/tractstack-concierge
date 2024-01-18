@@ -6,7 +6,7 @@ $dotenv->load();
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
 define('STORYKEEP_ROOT', $_ENV['STORYKEEP_ROOT']);
-define('DRUPAL_OAUTHROOT', $_ENV['DRUPAL_OAUTHROOT']);
+define('DRUPAL_OAUTH_ROOT', $_ENV['DRUPAL_OAUTH_ROOT']);
 
 function getPaneDetailsPie($storyFragmentId)
 {
@@ -317,12 +317,16 @@ function getSettings()
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
   $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
   $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
+  $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
+  $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
 
   echo json_encode(array(
     "data" => json_encode(array(
       "concierge" => $concierge_settings,
       "storykeep" => $storykeep_settings,
       "frontend" => $front_settings,
+      "oauth_public_key" => $oauth_public_key,
+      "oauth_private_key" => $oauth_private_key
     )),
     "message" => "Success.",
     "error" => null

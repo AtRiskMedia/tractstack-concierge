@@ -45,7 +45,7 @@ if ($jwt) {
   try {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     if (isset($data)) {
-      error_log('   ' . $data . '   ');
+      error_log('   ' . json_encode($data) . '   ');
       if (isset($data->storyFragmentId))
         $http_response_code = 200;
     }
