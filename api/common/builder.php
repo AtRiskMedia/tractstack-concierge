@@ -1,5 +1,13 @@
 <?php
 
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
+define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
+define('STORYKEEP_ROOT', $_ENV['STORYKEEP_ROOT']);
+define('DRUPAL_OAUTHROOT', $_ENV['DRUPAL_OAUTHROOT']);
+
 function getPaneDetailsPie($storyFragmentId)
 {
   $databaseService = new DatabaseService();
@@ -36,7 +44,6 @@ function getPaneDetailsPie($storyFragmentId)
   ));
   return (200);
 }
-
 
 function getPaneActivitySwarm()
 {
@@ -298,6 +305,24 @@ function getDashboardPayloads()
       "storyFragmentActivitySwarm" => $storyFragmentActivitySwarm,
       "paneActivitySwarm" => $paneActivitySwarm,
       "recentMetrics" => $recentMetrics
+    )),
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}
+
+function getSettings()
+{
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
+  $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
+
+  echo json_encode(array(
+    "data" => json_encode(array(
+      "concierge" => $concierge_settings,
+      "storykeep" => $storykeep_settings,
+      "frontend" => $front_settings,
     )),
     "message" => "Success.",
     "error" => null
