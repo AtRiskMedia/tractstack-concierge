@@ -71,6 +71,8 @@ $pre_register_stmt = false;
 $httpUserAgent = $_SERVER['HTTP_USER_AGENT'] ?? false;
 if (isset($data->referrer)) $referrer = $data->referrer;
 else $referrer = false;
+if (isset($referrer->httpReferrer)) $httpReferrer = $referrer->httpReferrer;
+else $httpReferrer = '';
 if (isset($referrer->utmSource)) $utmSource = $referrer->utmSource;
 else $utmSource = '';
 if (isset($referrer->utmMedium)) $utmMedium = $referrer->utmMedium;
@@ -173,7 +175,7 @@ if($utmCampaign) {
   $utm_stmt->bindParam(':utmCampaign', $utmCampaign);
   if ($utm_stmt->execute()) {
     $row = $utm_stmt->fetch(PDO::FETCH_ASSOC);
-    $campaign_id = isset($row['id']) ? $row['id'] : null;
+    $campaign_id = isset($row['id']) ? $row['id'] : false;
     $neo4j_campaign_id = isset($row['merged']) ? $row['merged'] : false;
   }
   // add to graph if not already
@@ -231,6 +233,8 @@ if (!($visit_id > -1 )) {
     " created_at = :created_at," .
     " updated_at = :updated_at," .
     " merged = FALSE," .
+    " httpReferrer = :httpReferrer," .
+    " httpUserAgent = :httpUserAgent," .
     " utmSource = :utmSource," .
     " utmContent = :utmContent," .
     " utmTerm = :utmTerm," .
@@ -240,6 +244,8 @@ if (!($visit_id > -1 )) {
   $visit_create_stmt->bindParam(':campaign_id', $campaign_id);
   $visit_create_stmt->bindParam(':created_at', $now);
   $visit_create_stmt->bindParam(':updated_at', $now);
+  $visit_create_stmt->bindParam(':httpReferrer', $httpReferrer);
+  $visit_create_stmt->bindParam(':httpUserAgent', $httpUserAgent);
   $visit_create_stmt->bindParam(':utmSource', $utmSource);
   $visit_create_stmt->bindParam(':utmContent', $utmContent);
   $visit_create_stmt->bindParam(':utmTerm', $utmTerm);
@@ -322,7 +328,7 @@ if ($merge) {
 
 // if campaign, pass to neo4j
 if( $neo4j_visit_id && !empty($utmCampaign)) {
-neo4j_merge_visit_campaign($client, $neo4j_visit_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent);
+  neo4j_merge_visit_campaign($client, $neo4j_visit_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer);
 }
 
 // run on every register
