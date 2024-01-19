@@ -171,21 +171,19 @@ function neo4j_merge_campaign($client, $utmCampaign)
   return null;
 }
 
-function neo4j_merge_visit_campaign($client, $visit_id,$campaign_id, $utmSource="", $utmMedium="",$utmTerm="", $utmContent="", $httpReferrer="")
+function neo4j_merge_visit_campaign($client, $visit_id,$campaign_id, $utmSource="", $utmMedium="",$utmTerm="", $utmContent="")
 {
   if (!NEO4J_ENABLED) return null;
-  $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($visit_id,$campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer) {
+  $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($visit_id,$campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent) {
     $result = $tsx->run('MATCH (v),(c) WHERE ID(v)=$visit_id AND ID(c)=$campaign_id
       MERGE (c)-[r:ENGAGED {utmSource:$utmSource, utmMedium:$utmMedium, 
-                           utmTerm:$utmTerm, utmContent:$utmContent, 
-                           httpReferrer:$httpReferrer}]->(v) 
+                           utmTerm:$utmTerm, utmContent:$utmContent}]->(v) 
       ', ['visit_id' => intval($visit_id),
       'campaign_id' => intval($campaign_id),
       'utmSource' => $utmSource,
       'utmMedium' => $utmMedium,
       'utmTerm' => $utmTerm,
-      'utmContent' => $utmContent,
-      'httpReferrer' => $httpReferrer]
+      'utmContent' => $utmContent]
     );
     return true;
   });
