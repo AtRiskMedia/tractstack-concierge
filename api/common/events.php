@@ -2,7 +2,6 @@
 
 function processEventStream($jwt, $payload)
 {
-  error_log(json_encode($payload));
   // neo4j
   $client = neo4j_connect();
   // for SQL
