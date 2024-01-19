@@ -235,6 +235,7 @@ function getRecentDailyActivity()
 
 function getDashboardPayloads()
 {
+
   $databaseService = new DatabaseService();
   $conn = $databaseService->getConnection();
   $actions_table_name = 'actions';
@@ -290,7 +291,7 @@ function getDashboardPayloads()
   }
 
   $activity_query = "select count(distinct(id)) as uniqueSessions, count(distinct(utmSource))-1 as uniqueUtmSource," .
-    " count(distinct(utmCampaign))-1 as uniqueUtmCampaign, count(distinct(utmTerm))-1 as uniqueUtmTerm" .
+    " count(distinct(campaign_id))-1 as uniqueUtmCampaign, count(distinct(utmTerm))-1 as uniqueUtmTerm" .
     " from visits WHERE DATE(updated_at) >= CURDATE() - INTERVAL 7 DAY;";
   $activity_stmt = $conn->prepare($activity_query);
   if ($activity_stmt->execute()) {
