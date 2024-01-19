@@ -22,6 +22,12 @@ PHP backend for Tract Stack
 ## MySQL Tables
 
 ```
+CREATE TABLE campaigns(
+  id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(40) NOT NULL,
+  merged INT(11) unsigned NOT NULL DEFAULT 0
+);
+
 CREATE TABLE leads(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(40) NOT NULL,
@@ -63,16 +69,17 @@ CREATE TABLE fingerprints(
 CREATE TABLE visits(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   fingerprint_id INT(11) unsigned NOT NULL,
+  campaign_id INT(11) unsigned,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   httpReferrer VARCHAR(4096),
   utmSource VARCHAR(40),
   utmMedium VARCHAR(40),
-  utmCampaign VARCHAR(40),
   utmTerm VARCHAR(40),
   utmContent VARCHAR(40),
   httpUserAgent VARCHAR(4096),
   merged INT(11) unsigned NOT NULL DEFAULT 0,
+  CONSTRAINT `fk_visit_campaign` FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_visit_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
 

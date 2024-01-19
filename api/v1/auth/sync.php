@@ -53,6 +53,7 @@ $leads_table_name = 'leads';
 $visits_table_name = 'visits';
 $beliefs_table_name = 'heldbeliefs';
 $corpus_table_name = 'corpus';
+$campaigns_table_name = 'campaigns';
 
 // neo4j
 $client = neo4j_connect();
@@ -136,6 +137,8 @@ if ($mode !== 'fingerprint' && $pre_register_stmt->execute()) {
 }
 else $row = [];
 
+$campaign_id = false;
+$neo4j_campaign_id = false;
 $fingerprint = isset($row['fingerprint']) ? strval($row['fingerprint']) : uniqid('t8k-', true);
 $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
 $neo4j_fingerprint_id = isset($row['neo4j_fingerprint_id']) ? strval($row['neo4j_fingerprint_id']) : false;
@@ -159,6 +162,40 @@ if (!$fingerprint_registered && !($fingerprint_id > -1 )) {
   } else {
     http_response_code(500);
     die();
+  }
+}
+
+// is this a known campaign
+if($utmCampaign) {
+  // get campaign id if known
+  $utm_query = "SELECT c.id, c.merged";
+  $utm_query .= " FROM " . $campaigns_table_name . " as c LEFT JOIN " . $visits_table_name . " as v ON c.id=v.campaign_id WHERE";
+  $utm_query .= " c.name=:utmCampaign";
+  $utm_stmt = $conn->prepare($utm_query);
+  $utm_stmt->bindParam(':utmCampaign', $utmCampaign);
+  if ($utm_stmt->execute()) {
+    $row = $utm_stmt->fetch(PDO::FETCH_ASSOC);
+    $campaign_id = isset($row['id']) ? $row['id'] : false;
+    $neo4j_campaign_id = isset($row['merged']) ? $row['merged'] : false;
+  }
+  // add to graph if not already
+  if( !$neo4j_campaign_id ) { 
+    // must add to graph
+    $neo4j_campaign_id = neo4j_merge_campaign($client, $utmCampaign);
+    if( $neo4j_campaign_id ){
+    // now add to db
+      $query = "INSERT INTO " . $campaigns_table_name . " SET name = :utmCampaign, merged = :neo4j_campaign_id";
+      $stmt = $conn->prepare($query);
+      $stmt->bindParam(':utmCampaign', $utmCampaign);
+      $stmt->bindParam(':neo4j_campaign_id', $neo4j_campaign_id);
+      if ($stmt->execute()) {
+        $campaign_id = strval($conn->lastInsertId());
+        //error_log("  New campaign: " . strval($campaign_id). '(' .strval($neo4j_campaign_id).')');
+      } else {
+        http_response_code(500);
+        die();
+      }
+    }
   }
 }
 
@@ -192,6 +229,7 @@ if (!($visit_id > -1 )) {
   $visit_create_query = "INSERT INTO " . $visits_table_name .
     " SET fingerprint_id = :fingerprint_id,";
   $visit_create_query .=
+    " campaign_id = :campaign_id," .
     " created_at = :created_at," .
     " updated_at = :updated_at," .
     " merged = FALSE," .
@@ -200,10 +238,10 @@ if (!($visit_id > -1 )) {
     " utmSource = :utmSource," .
     " utmContent = :utmContent," .
     " utmTerm = :utmTerm," .
-    " utmMedium = :utmMedium," .
-    " utmCampaign = :utmCampaign";
+    " utmMedium = :utmMedium";
   $visit_create_stmt = $conn->prepare($visit_create_query);
   $visit_create_stmt->bindParam(':fingerprint_id', $fingerprint_id);
+  $visit_create_stmt->bindParam(':campaign_id', $campaign_id);
   $visit_create_stmt->bindParam(':created_at', $now);
   $visit_create_stmt->bindParam(':updated_at', $now);
   $visit_create_stmt->bindParam(':httpReferrer', $httpReferrer);
@@ -212,7 +250,6 @@ if (!($visit_id > -1 )) {
   $visit_create_stmt->bindParam(':utmContent', $utmContent);
   $visit_create_stmt->bindParam(':utmTerm', $utmTerm);
   $visit_create_stmt->bindParam(':utmMedium', $utmMedium);
-  $visit_create_stmt->bindParam(':utmCampaign', $utmCampaign);
   if ($visit_create_stmt->execute()) {
     $visit_id = strval($conn->lastInsertId());
     //error_log("New visit: " . strval($visit_id));
@@ -287,6 +324,11 @@ if ($merge) {
   if (!$first_merge_stmt->execute()) {
     die();
   }
+}
+
+// if campaign, pass to neo4j
+if( $neo4j_visit_id && !empty($utmCampaign)) {
+neo4j_merge_visit_campaign($client, $neo4j_visit_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer);
 }
 
 // run on every register
