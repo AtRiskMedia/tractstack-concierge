@@ -334,3 +334,30 @@ function getSettings()
   ));
   return (200);
 }
+
+function triggerPublish($data) {
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  if( !file_exists($concierge_settings['WATCH_ROOT'].'build.lock')) {
+    //$locked = parse_ini_file($concierge_settings['WATCH_ROOT'].'build.lock');
+    file_put_contents($concierge_settings['WATCH_ROOT'].'build.lock', 'front');
+    file_put_contents($concierge_settings['FRONT_ROOT'].'tailwind.whitelist', implode(PHP_EOL, $data->whitelist));
+    echo json_encode(array(
+      "data" => json_encode(array(
+       "build" => true
+      )),
+      "message" => "Success.",
+      "error" => null
+    ));
+  }
+  else {
+    echo json_encode(array(
+      "data" => json_encode(array(
+       "build" => false,
+       "locked" => true
+      )),
+      "message" => "Locked.",
+      "error" => null
+    ));
+  }
+  return(200);
+}

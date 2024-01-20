@@ -45,10 +45,8 @@ if ($jwt) {
   try {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     if (isset($data)) {
-      error_log('   ' . json_encode($data) . '   ');
-      $http_response_code = 200;
+      $http_response_code = triggerPublish($data);
     }
-    //$http_response_code = getDashboardPayloads();
   } catch (Exception $e) {
     echo json_encode(array(
       "message" => "Access denied.",
