@@ -47,6 +47,9 @@ if ($jwt) {
     if ($_SERVER['REQUEST_METHOD'] === "GET") {
     $http_response_code = getSettings();
     }
+    else if ($_SERVER['REQUEST_METHOD'] === "POST") {
+    $http_response_code = postSettings($data);
+    }
   } catch (Exception $e) {
     echo json_encode(array(
       "message" => "Access denied.",

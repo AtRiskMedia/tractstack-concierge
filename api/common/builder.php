@@ -335,11 +335,49 @@ function getSettings()
   return (200);
 }
 
+function postSettings($payload)
+{
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
+  $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
+  $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
+  $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
+
+  $frontend_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","CONCIERGE_BASE_URL","CONCIERGE_REFRESH_TOKEN_URL",
+    "SHOPIFY_SHOP_PASSWORD","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL","SITE_URL",
+    "STORYKEEP_URL","HOMEPAGE","READ_THRESHOLD","SOFT_READ_THRESHOLD","CONCIERGE_SYNC","CONCIERGE_FORCE_INTERVAL",
+    "IMPRESSIONS_DELAY","SLOGAN","FOOTER","ACTION","LOCAL_STORAGE_KEY","SOCIAL","INITIALIZE_SHOPIFY"];
+  $storykeep_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","BUILDER_SECRET_KEY","CONCIERGE_BASE_URL","CONCIERGE_REFRESH_TOKEN_URL",
+    "SHOPIFY_SHOP_PASSWORD","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
+    "DRUPAL_OAUTH_CLIENT_SECRET","DRUPAL_OAUTH_GRANT_TYPE","DRUPAL_OAUTH_SCOPE","STORYKEEP_URL","OPENDEMO","MESSAGE_DELAY","HOMEPAGE"];
+  $concierge_keys = ["DB_HOST","DB_NAME","DB_USER","DB_PASSWORD","SECRET_KEY","BUILDER_SECRET_KEY","NEO4J_URI",
+    "NEO4J_USER","NEO4J_SECRET","NEO4J_ENABLED","CONCIERGE_ROOT","FRONT_ROOT","STORYKEEP_ROOT","DRUPAL_OAUTH_ROOT","WATCH_ROOT"];
+  $drupal_keys = ["OAUTH_PUBLIC_KEY","OAUTH_PRIVATE_KEY"];
+
+  foreach ($payload as $key => $value) {
+    //error_log( $key.' => '.$value.'  ' );
+    if( in_array($key, $frontend_keys)) error_log('frontend');
+    else if( in_array($key, $storykeep_keys)) error_log('storykeep');
+    else if( in_array($key, $concierge_keys)) error_log('concierge');
+    else if( in_array($key, $drupal_keys)) error_log('drupal');
+    else error_log(' MISS ');
+  }
+  echo json_encode(array(
+    "data" => json_encode(array(
+      "updated" => true
+    )),
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}
+
 function triggerPublish($data) {
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
   if( !file_exists($concierge_settings['WATCH_ROOT'].'build.lock')) {
     //$locked = parse_ini_file($concierge_settings['WATCH_ROOT'].'build.lock');
-    file_put_contents($concierge_settings['WATCH_ROOT'].'build.lock', 'front');
+    $target = $data->target;
+    file_put_contents($concierge_settings['WATCH_ROOT'].'build.lock', $target);
     file_put_contents($concierge_settings['FRONT_ROOT'].'tailwind.whitelist', implode(PHP_EOL, $data->whitelist));
     echo json_encode(array(
       "data" => json_encode(array(
