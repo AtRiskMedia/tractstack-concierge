@@ -13,13 +13,32 @@ function processEventStream($jwt, $payload)
   $actions_table_name = 'actions';
   $parents_table_name = 'parents';
   $heldbeliefs_table_name = 'heldbeliefs';
+  $campaigns_table_name = 'campaigns';
 
   // get jwt
   $fingerprint_id = isset($jwt->fingerprint_id) ? $jwt->fingerprint_id : false;
   $visit_id = isset($jwt->visit_id) ? $jwt->visit_id : false;
   //$created_at = isset($jwt->created_at) ? $jwt->created_at : false;
 
+  // check for campaign
+  if (isset($payload->referrer)) $referrer = $payload->referrer;
+  else $referrer = false;
+  if (isset($referrer->httpReferrer)) $httpReferrer = $referrer->httpReferrer;
+  else $httpReferrer = '';
+  if (isset($referrer->utmSource)) $utmSource = $referrer->utmSource;
+  else $utmSource = '';
+  if (isset($referrer->utmMedium)) $utmMedium = $referrer->utmMedium;
+  else $utmMedium = '';
+  if (isset($referrer->utmCampaign)) $utmCampaign  = $referrer->utmCampaign;
+  else $utmCampaign = '';
+  if (isset($referrer->utmTerm)) $utmTerm = $referrer->utmTerm;
+  else $utmTerm = '';
+  if (isset($referrer->utmContent)) $utmContent  = $referrer->utmContent;
+  else $utmContent = '';
+
   // defaults
+  $campaign_id = null;
+  $neo4j_campaign_id = false;
   $actions = [];
   $neo4j_visit_id = false;
   $neo4j_object_id = false;
@@ -48,6 +67,40 @@ function processEventStream($jwt, $payload)
     // visit has not yet been merged; something is wrong
     error_log('this visit has not been merged to neo4j; something is wrong');
     return (401);
+  }
+
+  // is this a known campaign
+  if($utmCampaign) {
+    // get campaign id if known
+    $utm_query = "SELECT c.id, c.merged";
+    $utm_query .= " FROM " . $campaigns_table_name . " as c LEFT JOIN " . $visits_table_name . " as v ON c.id=v.campaign_id WHERE";
+    $utm_query .= " c.name=:utmCampaign";
+    $utm_stmt = $conn->prepare($utm_query);
+    $utm_stmt->bindParam(':utmCampaign', $utmCampaign);
+    if ($utm_stmt->execute()) {
+      $row = $utm_stmt->fetch(PDO::FETCH_ASSOC);
+      $campaign_id = isset($row['id']) ? $row['id'] : false;
+      $neo4j_campaign_id = isset($row['merged']) ? $row['merged'] : false;
+    }
+    // add to graph if not already
+    if( !$neo4j_campaign_id ) { 
+      // must add to graph
+      $neo4j_campaign_id = neo4j_merge_campaign($client, $utmCampaign);
+      if( $neo4j_campaign_id ){
+      // now add to db
+        $query = "INSERT INTO " . $campaigns_table_name . " SET name = :utmCampaign, merged = :neo4j_campaign_id";
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':utmCampaign', $utmCampaign);
+        $stmt->bindParam(':neo4j_campaign_id', $neo4j_campaign_id);
+        if ($stmt->execute()) {
+          $campaign_id = strval($conn->lastInsertId());
+          //error_log("  New campaign: " . strval($campaign_id). '(' .strval($neo4j_campaign_id).')');
+        } else {
+          http_response_code(500);
+          die();
+        }
+      }
+    }
   }
 
   // pass through payload nodes to find all unmerged nodes
@@ -392,6 +445,9 @@ function processEventStream($jwt, $payload)
                 $statement = neo4j_merge_action($neo4j_parent_id, $neo4j_object_id, $verb, $score);
             } else if ($verb !== 'CONNECTED')
               $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
+            if( $verb === 'ENTERED' && !empty($utmCampaign ))
+              neo4j_merge_corpus_campaign($client, $neo4j_object_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer);
+            error_log($verb.'  '.$utmCampaign);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }

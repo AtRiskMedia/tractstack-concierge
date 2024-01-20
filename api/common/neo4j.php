@@ -171,12 +171,33 @@ function neo4j_merge_campaign($client, $utmCampaign)
   return null;
 }
 
+function neo4j_merge_corpus_campaign($client, $corpus_id,$campaign_id, $utmSource="", $utmMedium="",$utmTerm="", $utmContent="", $httpReferrer="")
+{
+  if (!NEO4J_ENABLED) return null;
+  $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($corpus_id,$campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent,$httpReferrer) {
+    $result = $tsx->run('MATCH (c1),(c) WHERE ID(c1)=$corpus_id AND ID(c)=$campaign_id
+      MERGE (c)-[r:LINKED {utmSource:$utmSource, utmMedium:$utmMedium, 
+      utmTerm:$utmTerm, utmContent:$utmContent, httpReferrer:$httpReferrer}]->(c1)
+      ', ['corpus_id' => intval($corpus_id),
+      'campaign_id' => intval($campaign_id),
+      'utmSource' => $utmSource,
+      'utmMedium' => $utmMedium,
+      'utmTerm' => $utmTerm,
+      'utmContent' => $utmContent,
+      'httpReferrer' => $httpReferrer]
+    );
+    return true;
+  });
+  if ($result) return $result;
+  return null;
+}
+
 function neo4j_merge_visit_campaign($client, $visit_id,$campaign_id, $utmSource="", $utmMedium="",$utmTerm="", $utmContent="", $httpReferrer="")
 {
   if (!NEO4J_ENABLED) return null;
   $result = $client->writeTransaction(static function (TransactionInterface $tsx) use ($visit_id,$campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent,$httpReferrer) {
     $result = $tsx->run('MATCH (v),(c) WHERE ID(v)=$visit_id AND ID(c)=$campaign_id
-      MERGE (c)-[r:ENGAGED {utmSource:$utmSource, utmMedium:$utmMedium, 
+      MERGE (c)-[r:LINKED {utmSource:$utmSource, utmMedium:$utmMedium, 
                            utmTerm:$utmTerm, utmContent:$utmContent, httpReferrer:$httpReferrer}]->(v) 
       ', ['visit_id' => intval($visit_id),
       'campaign_id' => intval($campaign_id),
