@@ -447,7 +447,6 @@ function processEventStream($jwt, $payload)
               $statement = neo4j_merge_action($neo4j_visit_id, $neo4j_object_id, $verb, $score);
             if( $verb === 'ENTERED' && !empty($utmCampaign ))
               neo4j_merge_corpus_campaign($client, $neo4j_object_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer);
-            error_log($verb.'  '.$utmCampaign);
             if ($statement) $actions[] = $statement;
             else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }

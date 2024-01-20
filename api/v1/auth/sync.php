@@ -83,7 +83,6 @@ if (isset($referrer->utmTerm)) $utmTerm = $referrer->utmTerm;
 else $utmTerm = '';
 if (isset($referrer->utmContent)) $utmContent  = $referrer->utmContent;
 else $utmContent = '';
-error_log('   '.$utmCampaign);
 
 // scenario one -- payload includes encryptedCode, encryptedEmail
 // mode: fastpass
