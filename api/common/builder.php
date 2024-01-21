@@ -343,24 +343,49 @@ function postSettings($payload)
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
   $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
 
-  $frontend_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","CONCIERGE_BASE_URL","CONCIERGE_REFRESH_TOKEN_URL",
-    "SHOPIFY_SHOP_PASSWORD","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL","SITE_URL",
+  $frontend_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","CONCIERGE_BASE_URL_FRONT","CONCIERGE_REFRESH_TOKEN_URL_FRONT",
+    "SHOPIFY_SHOP_PASSWORD_FRONT","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL_FRONT","SITE_URL",
     "STORYKEEP_URL","HOMEPAGE","READ_THRESHOLD","SOFT_READ_THRESHOLD","CONCIERGE_SYNC","CONCIERGE_FORCE_INTERVAL",
     "IMPRESSIONS_DELAY","SLOGAN","FOOTER","ACTION","LOCAL_STORAGE_KEY","SOCIAL","INITIALIZE_SHOPIFY"];
-  $storykeep_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","BUILDER_SECRET_KEY","CONCIERGE_BASE_URL","CONCIERGE_REFRESH_TOKEN_URL",
-    "SHOPIFY_SHOP_PASSWORD","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
+  $storykeep_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","BUILDER_SECRET_KEY","CONCIERGE_BASE_URL_BACK","CONCIERGE_REFRESH_TOKEN_URL_BACK",
+    "SHOPIFY_SHOP_PASSWORD_BACK","GATSBY_SHOPIFY_STORE_URL","DRUPAL_URL_BACK","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
     "DRUPAL_OAUTH_CLIENT_SECRET","DRUPAL_OAUTH_GRANT_TYPE","DRUPAL_OAUTH_SCOPE","STORYKEEP_URL","OPENDEMO","MESSAGE_DELAY","HOMEPAGE"];
   $concierge_keys = ["DB_HOST","DB_NAME","DB_USER","DB_PASSWORD","SECRET_KEY","BUILDER_SECRET_KEY","NEO4J_URI",
     "NEO4J_USER","NEO4J_SECRET","NEO4J_ENABLED","CONCIERGE_ROOT","FRONT_ROOT","STORYKEEP_ROOT","DRUPAL_OAUTH_ROOT","WATCH_ROOT"];
   $drupal_keys = ["OAUTH_PUBLIC_KEY","OAUTH_PRIVATE_KEY"];
 
-  foreach ($payload as $key => $value) {
+  foreach ($payload as $key => $val) {
+    if( gettype($val) === 'boolean' && $val) $value = "1";
+    else if( gettype($val) === 'boolean' && !$val) $value = "0";
+    else $value = $val;
     //error_log( $key.' => '.$value.'  ' );
-    if( in_array($key, $frontend_keys)) error_log('frontend');
-    else if( in_array($key, $storykeep_keys)) error_log('storykeep');
-    else if( in_array($key, $concierge_keys)) error_log('concierge');
-    else if( in_array($key, $drupal_keys)) error_log('drupal');
-    else error_log(' MISS ');
+    if( in_array($key, $frontend_keys)) {
+      if( $value === $front_settings[$key] ) error_log('*');
+      else
+      error_log('key: '.$key.'   frontend value:'.$value.'  now:'.$front_settings[$key].'  ');
+    }
+    if( in_array($key, $storykeep_keys)) {
+      if( $value === $storykeep_settings[$key] ) error_log('*');
+      else
+      error_log('key: '.$key.'   storykeep value:'.$value.'  now:'.$storykeep_settings[$key].'  ');
+    }
+    if( in_array($key, $concierge_keys)) {
+      if( $value === $concierge_settings[$key] ) error_log('*');
+      else
+      error_log('key: '.$key.'   concierge value:'.$value.'  now:'.$concierge_settings[$key].'  ');
+    }
+    if( in_array($key, $drupal_keys)) {
+      if( $key === `OAUTH_PUBLIC_KEY` ) {
+      if( $value === $oauth_public_key ) error_log('*');
+      else
+        error_log('key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_public_key.'  ');
+      }
+      else if( $key === `OAUTH_PRIVATE_KEY` ) {
+      if( $value === $oauth_private_key ) error_log('*');
+      else
+        error_log('key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_private_key.'  ');
+      }
+    }
   }
   echo json_encode(array(
     "data" => json_encode(array(
