@@ -358,26 +358,14 @@ function postSettings($payload)
   $storykeep = '';
   $concierge = '';
   foreach ($payload as $key => $val) {
-    if( gettype($val) === 'boolean' && $val) $value = "1";
-    else if( gettype($val) === 'boolean' && !$val) $value = "0";
-    else $value = $val;
     if( in_array($key, $frontend_keys)) {
-      $frontend .= $key.'='.$value.PHP_EOL;
-      //if( $value === $front_settings[$key] ) error_log('*');
-      //else
-      //error_log('key: '.$key.'   frontend value:'.$value.'  now:'.$front_settings[$key].'  ');
+      $front_settings[$key] = $val;
     }
     if( in_array($key, $storykeep_keys)) {
-      $storykeep .= $key.'='.$value.PHP_EOL;
-      //if( $value === $storykeep_settings[$key] ) error_log('*');
-      //else
-      //error_log('key: '.$key.'   storykeep value:'.$value.'  now:'.$storykeep_settings[$key].'  ');
+      $storykeep_settings[$key] = $val;
     }
     if( in_array($key, $concierge_keys)) {
-      $concierge .= $key.'='.$value.PHP_EOL;
-      //if( $value === $concierge_settings[$key] ) error_log('*');
-      //else
-      //error_log('key: '.$key.'   concierge value:'.$value.'  now:'.$concierge_settings[$key].'  ');
+      $concierge_settings[$key] = $val;
     }
     if( in_array($key, $drupal_keys)) {
       if( $key === `OAUTH_PUBLIC_KEY` && $value !== $oauth_public_key ) {
@@ -388,12 +376,9 @@ function postSettings($payload)
       }
     }
   }
-  error_log($frontend);
-  error_log($storykeep);
-  error_log($concierge);
-  file_put_contents('/home/tractstack/tmp/frontend.txt',$frontend);
-  file_put_contents('/home/tractstack/tmp/storykeep.txt',$storykeep);
-  file_put_contents('/home/tractstack/tmp/concierge.txt',$concierge);
+  file_put_contents('/home/tractstack/tmp/frontend.txt',implode(PHP_EOL, prepareIniFile($front_settings)));
+  file_put_contents('/home/tractstack/tmp/storykeep.txt',implode(PHP_EOL, prepareIniFile($storykeep_settings)));
+  file_put_contents('/home/tractstack/tmp/concierge.txt',implode(PHP_EOL, prepareIniFile($concierge_settings)));
   echo json_encode(array(
     "data" => json_encode(array(
       "updated" => true
@@ -402,6 +387,36 @@ function postSettings($payload)
     "error" => null
   ));
   return (200);
+}
+
+function prepareIniFile($array)
+{
+        $data = array();
+        foreach ($array as $key => $val) {
+            if (is_array($val)) {
+                $data[] = "[$key]";
+                foreach ($val as $skey => $sval) {
+                    if (is_array($sval)) {
+                        foreach ($sval as $_skey => $_sval) {
+                            if (is_numeric($_skey)) {
+                                $data[] = $skey.'[] = '.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
+                            } else {
+                                $data[] = $skey.'['.$_skey.'] = '.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
+                            }
+                        }
+                    } else {
+                        $data[] = $skey.' = '.(is_numeric($sval) ? $sval : (ctype_upper($sval) ? $sval : '"'.$sval.'"'));
+                    }
+                }
+            }
+            else if ($val == "1" ) $data[] = $key.' = true';
+            else if ($val == "0" ) $data[] = $key.' = false';
+            else {
+                $data[] = $key.' = '.(is_numeric($val) ? $val : (ctype_upper($val) ? $val : '"'.$val.'"'));
+            }
+        }
+        $data[] = null;
+        return $data;
 }
 
 function triggerPublish($data) {
