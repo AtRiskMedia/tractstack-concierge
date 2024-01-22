@@ -315,7 +315,7 @@ function getDashboardPayloads()
 
 function getSettings()
 {
-  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
   $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
@@ -337,7 +337,7 @@ function getSettings()
 
 function postSettings($payload)
 {
-  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
   $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
@@ -405,7 +405,7 @@ function postSettings($payload)
 }
 
 function triggerPublish($data) {
-  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'common/.env');
+  $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   if( !file_exists($concierge_settings['WATCH_ROOT'].'build.lock')) {
     //$locked = parse_ini_file($concierge_settings['WATCH_ROOT'].'build.lock');
     $target = $data->target;
