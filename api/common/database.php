@@ -1,6 +1,6 @@
 <?php
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
 $dotenv->load();
 
 define('SECRET_KEY', $_ENV['SECRET_KEY']);

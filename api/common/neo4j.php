@@ -1,6 +1,6 @@
 <?php
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
 $dotenv->load();
 
 define('NEO4J_SECRET', $_ENV['NEO4J_SECRET']);

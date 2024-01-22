@@ -1,6 +1,6 @@
 <?php
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
 $dotenv->load();
 
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
@@ -354,39 +354,46 @@ function postSettings($payload)
     "NEO4J_USER","NEO4J_SECRET","NEO4J_ENABLED","CONCIERGE_ROOT","FRONT_ROOT","STORYKEEP_ROOT","DRUPAL_OAUTH_ROOT","WATCH_ROOT"];
   $drupal_keys = ["OAUTH_PUBLIC_KEY","OAUTH_PRIVATE_KEY"];
 
+  $frontend = '';
+  $storykeep = '';
+  $concierge = '';
   foreach ($payload as $key => $val) {
     if( gettype($val) === 'boolean' && $val) $value = "1";
     else if( gettype($val) === 'boolean' && !$val) $value = "0";
     else $value = $val;
-    //error_log( $key.' => '.$value.'  ' );
     if( in_array($key, $frontend_keys)) {
-      if( $value === $front_settings[$key] ) error_log('*');
-      else
-      error_log('key: '.$key.'   frontend value:'.$value.'  now:'.$front_settings[$key].'  ');
+      $frontend .= $key.'='.$value.PHP_EOL;
+      //if( $value === $front_settings[$key] ) error_log('*');
+      //else
+      //error_log('key: '.$key.'   frontend value:'.$value.'  now:'.$front_settings[$key].'  ');
     }
     if( in_array($key, $storykeep_keys)) {
-      if( $value === $storykeep_settings[$key] ) error_log('*');
-      else
-      error_log('key: '.$key.'   storykeep value:'.$value.'  now:'.$storykeep_settings[$key].'  ');
+      $storykeep .= $key.'='.$value.PHP_EOL;
+      //if( $value === $storykeep_settings[$key] ) error_log('*');
+      //else
+      //error_log('key: '.$key.'   storykeep value:'.$value.'  now:'.$storykeep_settings[$key].'  ');
     }
     if( in_array($key, $concierge_keys)) {
-      if( $value === $concierge_settings[$key] ) error_log('*');
-      else
-      error_log('key: '.$key.'   concierge value:'.$value.'  now:'.$concierge_settings[$key].'  ');
+      $concierge .= $key.'='.$value.PHP_EOL;
+      //if( $value === $concierge_settings[$key] ) error_log('*');
+      //else
+      //error_log('key: '.$key.'   concierge value:'.$value.'  now:'.$concierge_settings[$key].'  ');
     }
     if( in_array($key, $drupal_keys)) {
-      if( $key === `OAUTH_PUBLIC_KEY` ) {
-      if( $value === $oauth_public_key ) error_log('*');
-      else
-        error_log('key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_public_key.'  ');
+      if( $key === `OAUTH_PUBLIC_KEY` && $value !== $oauth_public_key ) {
+        error_log('update key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_public_key.'  ');
       }
-      else if( $key === `OAUTH_PRIVATE_KEY` ) {
-      if( $value === $oauth_private_key ) error_log('*');
-      else
-        error_log('key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_private_key.'  ');
+      if( $key === `OAUTH_PRIVATE_KEY` && $value !== $oauth_private_key ) {
+        error_log('update key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_private_key.'  ');
       }
     }
   }
+  error_log($frontend);
+  error_log($storykeep);
+  error_log($concierge);
+  file_put_contents('/home/tractstack/tmp/frontend.txt',$frontend);
+  file_put_contents('/home/tractstack/tmp/storykeep.txt',$storykeep);
+  file_put_contents('/home/tractstack/tmp/concierge.txt',$concierge);
   echo json_encode(array(
     "data" => json_encode(array(
       "updated" => true
