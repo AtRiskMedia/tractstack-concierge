@@ -349,7 +349,7 @@ function postSettings($payload)
     "IMPRESSIONS_DELAY","SLOGAN","FOOTER","ACTION","LOCAL_STORAGE_KEY","SOCIAL","INITIALIZE_SHOPIFY"];
   $storykeep_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","BUILDER_SECRET_KEY","CONCIERGE_BASE_URL_BACK","CONCIERGE_REFRESH_TOKEN_URL_BACK",
     "SHOPIFY_SHOP_PASSWORD_BACK","GATSBY_SHOPIFY_STORE_URL","DRUPAL_URL_BACK","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
-    "DRUPAL_OAUTH_CLIENT_SECRET","DRUPAL_OAUTH_GRANT_TYPE","DRUPAL_OAUTH_SCOPE","STORYKEEP_URL","OPENDEMO","MESSAGE_DELAY","HOMEPAGE"];
+    "DRUPAL_OAUTH_CLIENT_SECRET","DRUPAL_OAUTH_GRANT_TYPE","DRUPAL_OAUTH_SCOPE","STORYKEEP_URL","OPENDEMO","MESSAGE_DELAY","HOMEPAGE","SLOGAN"];
   $concierge_keys = ["DB_HOST","DB_NAME","DB_USER","DB_PASSWORD","SECRET_KEY","BUILDER_SECRET_KEY","NEO4J_URI",
     "NEO4J_USER","NEO4J_SECRET","NEO4J_ENABLED","CONCIERGE_ROOT","FRONT_ROOT","STORYKEEP_ROOT","DRUPAL_OAUTH_ROOT","WATCH_ROOT"];
   $drupal_keys = ["OAUTH_PUBLIC_KEY","OAUTH_PRIVATE_KEY"];
@@ -369,16 +369,18 @@ function postSettings($payload)
     }
     if( in_array($key, $drupal_keys)) {
       if( $key === `OAUTH_PUBLIC_KEY` && $value !== $oauth_public_key ) {
-        error_log('update key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_public_key.'  ');
+        error_log($concierge_settings['DRUPAL_OAUTH_ROOT'].PHP_EOL);
+        error_log($value.PHP_EOL);
       }
       if( $key === `OAUTH_PRIVATE_KEY` && $value !== $oauth_private_key ) {
-        error_log('update key: '.$key.'   drupal value:'.$value.'  now:'.$oauth_private_key.'  ');
+        error_log($concierge_settings['DRUPAL_OAUTH_ROOT'].PHP_EOL);
+        error_log($value.PHP_EOL);
       }
     }
   }
-  file_put_contents('/home/tractstack/tmp/frontend.txt',implode(PHP_EOL, prepareIniFile($front_settings)));
-  file_put_contents('/home/tractstack/tmp/storykeep.txt',implode(PHP_EOL, prepareIniFile($storykeep_settings)));
-  file_put_contents('/home/tractstack/tmp/concierge.txt',implode(PHP_EOL, prepareIniFile($concierge_settings)));
+  file_put_contents($concierge_settings['FRONT_ROOT'].'.env.production',implode(PHP_EOL, prepareIniFile($front_settings)));
+  file_put_contents($concierge_settings['STORYKEEP_ROOT'].'.env.production',implode(PHP_EOL, prepareIniFile($storykeep_settings)));
+  file_put_contents($concierge_settings['CONCIERGE_ROOT'].'.env',implode(PHP_EOL, prepareIniFile($concierge_settings)));
   echo json_encode(array(
     "data" => json_encode(array(
       "updated" => true
@@ -399,20 +401,22 @@ function prepareIniFile($array)
                     if (is_array($sval)) {
                         foreach ($sval as $_skey => $_sval) {
                             if (is_numeric($_skey)) {
-                                $data[] = $skey.'[] = '.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
+                                $data[] = $skey.'[]='.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
                             } else {
-                                $data[] = $skey.'['.$_skey.'] = '.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
+                                $data[] = $skey.'['.$_skey.']='.(is_numeric($_sval) ? $_sval : (ctype_upper($_sval) ? $_sval : '"'.$_sval.'"'));
                             }
                         }
                     } else {
-                        $data[] = $skey.' = '.(is_numeric($sval) ? $sval : (ctype_upper($sval) ? $sval : '"'.$sval.'"'));
+                        $data[] = $skey.'='.(is_numeric($sval) ? $sval : (ctype_upper($sval) || strpos($sval, ' ') !== false ? $sval : '"'.$sval.'"'));
                     }
                 }
             }
-            else if ($val == "1" ) $data[] = $key.' = true';
-            else if ($val == "0" ) $data[] = $key.' = false';
+            else if ($val == "1" ) $data[] = $key.'=true';
+            else if ($val == "0" ) $data[] = $key.'=false';
+            else if (str_contains($val,'!'))
+                $data[] = $key.'="'.$val.'"';
             else {
-                $data[] = $key.' = '.(is_numeric($val) ? $val : (ctype_upper($val) ? $val : '"'.$val.'"'));
+                $data[] = $key.'='.(is_numeric($val) ? $val : (ctype_upper($val) || strpos($val, ' ') == false ? $val : '"'.$val.'"'));
             }
         }
         $data[] = null;
