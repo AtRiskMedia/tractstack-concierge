@@ -50,7 +50,7 @@ if ($jwt) {
       processEventStream($decoded->data, $data);
   } catch (Exception $e) {
     http_response_code(401);
-    error_log($e->getMessage());
+    //error_log($e->getMessage());
     echo json_encode(array(
       "message" => "Access denied.",
       "error" => $e->getMessage()

@@ -60,7 +60,8 @@ $client = neo4j_connect();
 
 // get POST payload
 $data = json_decode(file_get_contents("php://input"));
-$fingerprint = false; // isset($data->fingerprint) ? $data->fingerprint : false;
+$reuse_fingerprint = isset($data->fingerprint) ? $data->fingerprint : false;
+$fingerprint = false;
 $codeword = isset($data->codeword) ? $data->codeword : false;
 $email = isset($data->email) ? $data->email : false;
 $encryptedCode = isset($data->encryptedCode) ? $data->encryptedCode : false;
@@ -90,13 +91,16 @@ else $utmContent = '';
 // scenario two -- payload includes codeword, email
 // mode: authenticate
 //
-// scenario three -- payload empty
+// scenario three -- re-use fingerprint
+// mode: reuse
+//
+// scenario four -- payload empty
 // mode: fingerprint
 
 if ($codeword && $email) $mode = "authenticate";
 else if ($encryptedCode && $encryptedEmail) $mode = "fastpass";
+else if ($reuse_fingerprint ) $mode = "reuse";
 else $mode = "fingerprint";
-
 switch ($mode) {
   case "authenticate":
     $pre_register_query = "SELECT f.id as fingerprint_id,l.id as lead_id, f.fingerprint, first_name, f.merged as neo4j_fingerprint_id, l.merged as neo4j_lead_id,";
@@ -118,28 +122,35 @@ switch ($mode) {
     $pre_register_stmt->bindParam(':encryptedEmail', $encryptedEmail);
     $pre_register_stmt->bindParam(':secret', $secret_key);
     break;
+
+  case "reuse":
+    // NOTE: this is not *verifying* the fingerprint and could be used to spoof
+    // super low-stakes vector, but worth closing
+    $pre_register_query = "SELECT f.id as fingerprint_id, f.fingerprint, l.id as lead_id, first_name, f.merged as neo4j_fingerprint_id, l.merged as neo4j_lead_id";
+    $pre_register_query .= " FROM " . $fingerprints_table_name . " as f LEFT JOIN " . $leads_table_name . " as l ON f.lead_id=l.id WHERE";
+    $pre_register_query .= " fingerprint=:fingerprint";
+    $pre_register_stmt = $conn->prepare($pre_register_query);
+    $pre_register_stmt->bindParam(':fingerprint', $reuse_fingerprint);
+    break;
 }
 
 if ($mode !== 'fingerprint' && $pre_register_stmt->execute()) {
   $row = $pre_register_stmt->fetch(PDO::FETCH_ASSOC);
   if ($mode === 'authenticate' && $row['codeword'] === '') {
-    error_log('Security violation occurred.');
+    //error_log('Security violation occurred.');
     http_response_code(401);
     die();
   }
 } else if ($mode !== "fingerprint") {
-  error_log('Security violation occurred.');
+  //error_log('Security violation occurred.');
   http_response_code(401);
-  die();
-} else if ($mode !== "fingerprint") {
-  http_response_code(500);
   die();
 }
 else $row = [];
 
 $campaign_id = null;
 $neo4j_campaign_id = false;
-$fingerprint = isset($row['fingerprint']) ? strval($row['fingerprint']) : uniqid('t8k-', true);
+$fingerprint = (isset($reuse_fingerprint) ? $reuse_fingerprint : isset($row['fingerprint'])) ? strval($row['fingerprint']) : uniqid('t8k-', true);
 $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
 $neo4j_fingerprint_id = isset($row['neo4j_fingerprint_id']) ? strval($row['neo4j_fingerprint_id']) : false;
 $neo4j_lead_id = isset($row['neo4j_lead_id']) ? strval($row['neo4j_lead_id']) : false;
@@ -152,7 +163,7 @@ if ($mode === "authenticate" || $mode === "fastpass")
 $auth = true;
 
 // register new fingerprint
-if (!$fingerprint_registered && !($fingerprint_id > -1 )) {
+if ($mode !== 'reuse' && !$fingerprint_registered && !($fingerprint_id > -1 )) {
   $query = "INSERT INTO " . $fingerprints_table_name . " SET fingerprint = :fingerprint";
   $stmt = $conn->prepare($query);
   $stmt->bindParam(':fingerprint', $fingerprint);
