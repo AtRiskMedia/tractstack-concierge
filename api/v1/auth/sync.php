@@ -136,7 +136,7 @@ switch ($mode) {
 
 if ($mode !== 'fingerprint' && $pre_register_stmt->execute()) {
   $row = $pre_register_stmt->fetch(PDO::FETCH_ASSOC);
-  if ($mode === 'authenticate' && $row['codeword'] === '') {
+  if (!$row || ($mode === 'authenticate' && $row['codeword'] === '')) {
     //error_log('Security violation occurred.');
     http_response_code(401);
     die();
@@ -161,6 +161,11 @@ $newEncryptedEmail = isset($row['email']) ? $row['email'] : false;
 $newEncryptedCode = isset($row['codeword']) ? $row['codeword'] : false;
 if ($mode === "authenticate" || $mode === "fastpass")
 $auth = true;
+
+if( !$fingerprint ) {
+  http_response_code(401);
+  die();
+}
 
 // register new fingerprint
 if ($mode !== 'reuse' && !$fingerprint_registered && !($fingerprint_id > -1 )) {
