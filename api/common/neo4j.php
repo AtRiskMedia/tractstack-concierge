@@ -266,7 +266,6 @@ function neo4j_merge_belief_remove_action($neo4j_fingerprint, $neo4j_belief, $pr
       ['neo4j_fingerprint' => intval($neo4j_fingerprint), 'neo4j_belief' => intval($neo4j_belief)]
     );
     return $statement;
-    error_log(' match '.$previous_verb.' '.$neo4j_fingerprint. ' '.$neo4j_belief.'  ');
   } else {
     error_log('MISS ON ' . $previous_verb);
   }
