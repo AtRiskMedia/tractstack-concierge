@@ -522,11 +522,13 @@ function processEventStream($jwt, $payload)
             }
             // now merge to neo4j
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
-            if ($previous_verb) {
+            // remove previous
+            if ($previous_verb && $object) {
               $statement = neo4j_merge_belief_remove_action($neo4j_fingerprint_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on Remove Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
+              else error_log('bad on Remove Fingerprint :VERB* Belief ' . $previous_verb. ' ('.$object. ') ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
+            // merge belief to fingerprint
             if ($verb !== 'UNSET') {
               $statement = neo4j_merge_belief_action($neo4j_fingerprint_id, $neo4j_object_id, $verb, $object);
               if ($statement) $actions[] = $statement;
