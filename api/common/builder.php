@@ -290,8 +290,8 @@ function getDashboardPayloads()
     return (500);
   }
 
-  $activity_query = "select count(distinct(id)) as uniqueSessions, count(distinct(utmSource))-1 as uniqueUtmSource," .
-    " count(distinct(campaign_id))-1 as uniqueUtmCampaign, count(distinct(utmTerm))-1 as uniqueUtmTerm" .
+  $activity_query = "select count(distinct(id)) as uniqueSessions, count(distinct(utmSource)) as uniqueUtmSource," .
+    " count(distinct(campaign_id)) as uniqueUtmCampaign, count(distinct(utmTerm)) as uniqueUtmTerm" .
     " from visits WHERE DATE(updated_at) >= CURDATE() - INTERVAL 7 DAY;";
   $activity_stmt = $conn->prepare($activity_query);
   if ($activity_stmt->execute()) {
