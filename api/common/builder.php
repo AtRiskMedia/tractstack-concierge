@@ -210,7 +210,7 @@ function getRecentDailyActivity()
     " sum((case when verb='CLICKED' then 1 else 0 end)) as clicked," .
     " sum((case when verb='CONNECTED' then 1 else 0 end)) as discovered" .
     " from " . $actions_table_name .
-    " where DATE(created_at) >= CURDATE() - INTERVAL 14 DAY" .
+    " where DATE(created_at) >= CURDATE() - INTERVAL 28 DAY" .
     " group by DATE(created_at);";
   $activity_stmt = $conn->prepare($activity_query);
 
@@ -248,7 +248,7 @@ function getDashboardPayloads()
     " sum((case when verb='CLICKED' then 1 else 0 end)) as clicked," .
     " sum((case when verb='CONNECTED' then 1 else 0 end)) as discovered" .
     " from " . $actions_table_name .
-    " where DATE(created_at) >= CURDATE() - INTERVAL 14 DAY" .
+    " where DATE(created_at) >= CURDATE() - INTERVAL 28 DAY" .
     " group by DATE(created_at);";
   $activity_stmt = $conn->prepare($activity_query);
   if ($activity_stmt->execute()) {
