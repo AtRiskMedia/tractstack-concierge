@@ -6,7 +6,7 @@ $dotenv->load();
 define('NEO4J_SECRET', $_ENV['NEO4J_SECRET']);
 define('NEO4J_URI', $_ENV['NEO4J_URI']);
 define('NEO4J_USER', $_ENV['NEO4J_USER']);
-define('NEO4J_ENABLED', $_ENV['NEO4J_ENABLED']);
+define('NEO4J_ENABLED', $_ENV['NEO4J_ENABLED']==='true');
 define('HELDBELIEFS',  array(
   "STRONGLY_AGREES",
   "AGREES",

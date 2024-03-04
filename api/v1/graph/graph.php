@@ -44,6 +44,12 @@ if ($jwt) {
   try {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     $http_response_code = 200;
+    if (!NEO4J_ENABLED) {
+      http_response_code(200);
+      $res = (object) array('data' => null);
+      echo json_encode($res);
+      die();
+    }
     $client = neo4j_connect();
     $graph_json = neo4j_getGraph($client, $conn);
     echo json_encode($graph_json);
