@@ -212,7 +212,8 @@ function processEventStream($jwt, $payload)
           case "Belief": // for a belief, must also update SQL table 
             $neo4j_object_id = neo4j_merge_belief($client, $id);
             $neo4j_corpus_ids[$id] = $neo4j_object_id;
-            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $node->parentId, $neo4j_object_id, $in_sql, $parent_in_sql];
+            $thisParentId = isset($node->parentId) ? $node->parentId : null;
+            $neo4j_merged_corpus_to_update_sql[$id] = [$thisTitleTrimmed, $id, "Belief", $thisParentId, $neo4j_object_id, $in_sql, $parent_in_sql];
             break;
 
           case "H5P":
@@ -266,7 +267,7 @@ function processEventStream($jwt, $payload)
 
           case "Belief": // TractStack :CONTAINS Belief
             $neo4j_object_id = $neo4j_corpus_ids[$id];
-            $neo4j_tractStack_id = $neo4j_corpus_ids[$node->parentId];
+            $neo4j_tractStack_id = isset($node->parentId, $neo4j_corpus_ids[$node->parentId]) ? $neo4j_corpus_ids[$node->parentId] : null;
             if ($neo4j_tractStack_id > -1 && $neo4j_object_id > -1) {
               $statement = neo4j_tractStack_contains_belief($neo4j_tractStack_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
