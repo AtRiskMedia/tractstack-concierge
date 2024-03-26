@@ -285,13 +285,13 @@ function processEventStream($jwt, $payload)
             }
             break;
 
-          case "Impression": // Pane :CONTAINS Impression
+          case "Impression": // StoryFragment :CONTAINS Impression
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_parent_id = $neo4j_corpus_ids[$node->parentId];
             if ($neo4j_object_id >-1 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_impression($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on Pane contains Impression '  . $neo4j_object_id . "   " . $neo4j_parent_id);
+              else error_log('bad on StoryFragment contains Impression '  . $neo4j_object_id . "   " . $neo4j_parent_id);
             }
             break;
         }
@@ -370,7 +370,7 @@ function processEventStream($jwt, $payload)
         $thisObjectParentId = $data[3];
         $thisObjectNeo4jId = $data[4];
         $thisObjectSqlId = (isset($data[5]) && $data[5] ? $data[5] : isset($sql_corpus_ids[$thisObjectId])) ? $sql_corpus_ids[$thisObjectId] : null;
-        if (!$thisObjectSqlId) error_log('          !!!! WARNING no sql id: ' . json_encode($data).' !!!!!!!!!!         ');
+        if (!isset($thisObjectSqlId)) error_log('          !!!! WARNING no sql id: ' . json_encode($data).' !!!!!!!!!!         ');
         $thisObjectParentSqlId = $thisObjectParentId ? $sql_corpus_ids[$thisObjectParentId] : null;
         if (
           $thisObjectParentSqlId &&
@@ -524,7 +524,7 @@ function processEventStream($jwt, $payload)
             // now merge to neo4j
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             // remove previous
-            if ($previous_verb && $object) {
+            if ($previous_verb ) {
               $statement = neo4j_merge_belief_remove_action($neo4j_fingerprint_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
               else error_log('bad on Remove Fingerprint :VERB* Belief ' . $previous_verb. ' ('.$object. ') ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
