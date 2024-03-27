@@ -25,7 +25,7 @@ PHP backend for Tract Stack
 CREATE TABLE campaigns(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(40) NOT NULL,
-  merged INT(11) unsigned NOT NULL DEFAULT 0
+  merged VARCHAR(64)
 );
 
 CREATE TABLE leads(
@@ -37,7 +37,7 @@ CREATE TABLE leads(
   shortBio VARCHAR(280),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  merged INT(11) unsigned NOT NULL DEFAULT 0
+  merged VARCHAR(64)
 );
 
 CREATE TABLE corpus(
@@ -46,7 +46,7 @@ CREATE TABLE corpus(
   object_name VARCHAR(48) NOT NULL,
   object_id VARCHAR(36) NOT NULL UNIQUE,
   object_type VARCHAR(40) NOT NULL,
-  merged INT(11) unsigned NOT NULL DEFAULT 0
+  merged VARCHAR(64)
 );
 
 CREATE TABLE parents(
@@ -61,7 +61,7 @@ CREATE TABLE fingerprints(
   id INT(11) unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   fingerprint VARCHAR(32) NOT NULL UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  merged INT(11) unsigned NOT NULL DEFAULT 0,
+  merged VARCHAR(64),
   lead_id INT(11) unsigned,
   CONSTRAINT `fk_fingerprint_lead` FOREIGN KEY (lead_id) REFERENCES leads (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
@@ -78,7 +78,7 @@ CREATE TABLE visits(
   utmContent VARCHAR(40),
   httpReferrer VARCHAR(4096),
   httpUserAgent VARCHAR(4096),
-  merged INT(11) unsigned NOT NULL DEFAULT 0,
+  merged VARCHAR(64),
   CONSTRAINT `fk_visit_campaign` FOREIGN KEY (campaign_id) REFERENCES campaigns (id) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `fk_visit_fingerprint` FOREIGN KEY (fingerprint_id) REFERENCES fingerprints (id) ON DELETE CASCADE ON UPDATE RESTRICT
 );
@@ -159,3 +159,5 @@ CREATE TABLE actions(
 - corpus -> corpus ... contains
 - corpus -> corpus ... points_to
 
+
+# note: v0.2.0 switched to VARCHAR(64) from INT(11) for neo4j merged id

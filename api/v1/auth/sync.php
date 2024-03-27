@@ -248,7 +248,7 @@ if (!($visit_id > -1 )) {
     " campaign_id = :campaign_id," .
     " created_at = :created_at," .
     " updated_at = :updated_at," .
-    " merged = FALSE," .
+    " merged = :empty," .
     " httpReferrer = :httpReferrer," .
     " httpUserAgent = :httpUserAgent," .
     " utmSource = :utmSource," .
@@ -266,6 +266,8 @@ if (!($visit_id > -1 )) {
   $visit_create_stmt->bindParam(':utmContent', $utmContent);
   $visit_create_stmt->bindParam(':utmTerm', $utmTerm);
   $visit_create_stmt->bindParam(':utmMedium', $utmMedium);
+  $blank='';
+  $visit_create_stmt->bindParam(':empty', $blank);
   if ($visit_create_stmt->execute()) {
     $visit_id = strval($conn->lastInsertId());
     //error_log("New visit: " . strval($visit_id));
@@ -299,21 +301,21 @@ if (!$has_token) {
   }
 }
 // is fingerprint merged?
-if (!($neo4j_fingerprint_id > -1)) {
+if (!(strlen($neo4j_fingerprint_id) > 0)) {
   $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
   //error_log("Merged fingerprint: " . strval($neo4j_fingerprint_id));
-  if ($neo4j_fingerprint_id > -1)
+  if (strlen($neo4j_fingerprint_id) > 0)
     $merge = true;
-  else $neo4j_fingerprint_id = 0;
+  else $neo4j_fingerprint_id = "0";
 }
 
 // is visit merged?
-if (!$neo4j_visit_id) {
+if (!strlen($neo4j_visit_id) > 0) {
   $neo4j_visit_id = neo4j_merge_visit($client, $visit_id, $now_seconds);
   //error_log("Merged visit: " . strval($neo4j_visit_id));
   if ($neo4j_visit_id)
     $merge = true;
-  else $neo4j_visit_id = 0;
+  else $neo4j_visit_id = "0";
 }
 if ($merge) {
   $first_merge_query = "UPDATE " . $fingerprints_table_name . " f" .
@@ -348,22 +350,24 @@ if( $neo4j_visit_id && !empty($utmCampaign)) {
 }
 
 // run on every register
-if ($neo4j_fingerprint_id > -1 && $neo4j_visit_id > -1) {
+if (strlen($neo4j_fingerprint_id) > 0 && strlen($neo4j_visit_id) > 0) {
   //error_log("Merged Fingerprint has Visit: " . strval($neo4j_fingerprint_id) . " " . strval($neo4j_visit_id));
   $statement = neo4j_fingerprint_has_visit($neo4j_fingerprint_id, $neo4j_visit_id);
   if ($statement)
-    $client->runStatement($statement);
+  {
+    $res = $client->runStatement($statement);
+  }
   else error_log('bad on fingerprint has visit');
 }
 
 // is lead merged to this fingerprint?
-if (!$neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1 && $lead_id > -1) {
+if ((!strlen($neo4j_lead_id) > 0 || $neo4j_lead_id ==="0" ) && strlen($neo4j_fingerprint_id) > 0 && $lead_id > 0) {
   $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
   //error_log("Merged lead: " . strval($neo4j_lead_id));
   $lead_merge = true;
 }
 
-if ($lead_merge && $neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1) {
+if ($lead_merge && strlen($neo4j_lead_id) > 0 && strlen($neo4j_fingerprint_id) > 0) {
   $statement = neo4j_lead_has_fingerprint($lead_id, $fingerprint_id);
   //error_log("Merged Lead has Fingerprint: " . strval($lead_id) . " " . strval($fingerprint_id));
   if ($statement)
@@ -372,7 +376,7 @@ if ($lead_merge && $neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1) {
 }
 
 // known Lead with new Fingerprint
-if ($knownNewFingerprint && $neo4j_lead_id > -1) {
+if ($knownNewFingerprint && strlen($neo4j_lead_id) > 0) {
   $set_merged_query = "UPDATE " . $leads_table_name .
     " SET merged=:neo4j_lead_id" .
     " WHERE id = :lead_id";

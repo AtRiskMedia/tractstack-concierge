@@ -234,7 +234,7 @@ function processEventStream($jwt, $payload)
           case "Pane": // StoryFragment :CONTAINS Pane ... or TractStack :CONTAINS Pane if context
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_storyFragment_id = isset($node->parentId, $neo4j_corpus_ids[$node->parentId]) ? $neo4j_corpus_ids[$node->parentId] : null;
-            if ($neo4j_object_id > -1 && $neo4j_storyFragment_id > -1) {
+            if (strlen($neo4j_object_id) > 0 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_storyFragment_contains_corpus($neo4j_storyFragment_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on StoryFragment :CONTAINS Pane' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
@@ -244,7 +244,7 @@ function processEventStream($jwt, $payload)
           case "StoryFragment": // TractStack :CONTAINS StoryFragment
             $neo4j_storyFragment_id = $neo4j_corpus_ids[$id];
             $neo4j_tractStack_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_tractStack_id > -1 && $neo4j_storyFragment_id > -1) {
+            if ($neo4j_tractStack_id > -1 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_tractStack_contains_storyFragment($neo4j_tractStack_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on TractStack :CONTAINS StoryFragment' . "  " . $neo4j_tractStack_id . "   " . $neo4j_storyFragment_id);
@@ -258,7 +258,7 @@ function processEventStream($jwt, $payload)
           case "MenuItem": // MenuItems :LINKS StoryFragment
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_storyFragment_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_object_id > -1 && $neo4j_storyFragment_id > -1) {
+            if (strlen($neo4j_object_id) > 0 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_menuitem_links_storyFragment($neo4j_object_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on MenuItem :LINKS StoryFragment' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
@@ -268,7 +268,7 @@ function processEventStream($jwt, $payload)
           case "Belief": // TractStack :CONTAINS Belief
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_tractStack_id = isset($node->parentId, $neo4j_corpus_ids[$node->parentId]) ? $neo4j_corpus_ids[$node->parentId] : null;
-            if ($neo4j_tractStack_id > -1 && $neo4j_object_id > -1) {
+            if ($neo4j_tractStack_id > -1 && strlen($neo4j_object_id) > 0) {
               $statement = neo4j_tractStack_contains_belief($neo4j_tractStack_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on TractStack :CONTAINS Belief  ' . $neo4j_tractStack_id . "   " . $neo4j_object_id);
@@ -278,7 +278,7 @@ function processEventStream($jwt, $payload)
           case "H5P": // Pane :CONTAINS H5P
             $neo4j_object_id = $neo4j_corpus_ids[$id];
             $neo4j_parent_id = $neo4j_corpus_ids[$node->parentId];
-            if ($neo4j_object_id > -1 && $neo4j_parent_id > -1) {
+            if (strlen($neo4j_object_id) > 0 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_corpus($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
               else error_log('bad on Pane contains H5P ' . $neo4j_object_id . "   " . $neo4j_parent_id);
