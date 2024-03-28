@@ -38,7 +38,6 @@ $valid_until = date('Y-m-d H:i:s', strtotime("now +14 days")); // life of refres
 $secret_key = SECRET_KEY;
 $auth = false;
 $firstname = false;
-$knownNewFingerprint = false;
 $heldBeliefs = false;
 
 // response
@@ -150,7 +149,10 @@ else $row = [];
 
 $campaign_id = null;
 $neo4j_campaign_id = false;
+
+$fingerprint_known = isset($row['fingerprint']) ? $row['fingerprint'] : false;
 $fingerprint = (isset($reuse_fingerprint) ? $reuse_fingerprint : isset($row['fingerprint'])) ? strval($row['fingerprint']) : uniqid('t8k-', true);
+
 $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
 $neo4j_fingerprint_id = isset($row['neo4j_fingerprint_id']) ? strval($row['neo4j_fingerprint_id']) : false;
 $neo4j_lead_id = isset($row['neo4j_lead_id']) ? strval($row['neo4j_lead_id']) : false;
@@ -300,6 +302,7 @@ if (!$has_token) {
     die();
   }
 }
+
 // is fingerprint merged?
 if (!(strlen($neo4j_fingerprint_id) > 0)) {
   $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
@@ -360,8 +363,8 @@ if (strlen($neo4j_fingerprint_id) > 0 && strlen($neo4j_visit_id) > 0) {
   else error_log('bad on fingerprint has visit');
 }
 
-// is lead merged to this fingerprint?
-if ((!strlen($neo4j_lead_id) > 0 || $neo4j_lead_id ==="0" ) && strlen($neo4j_fingerprint_id) > 0 && $lead_id > 0) {
+// if lead; merged to this fingerprint
+if (strlen($neo4j_lead_id) > 0  && strlen($neo4j_fingerprint_id) > 0 && $lead_id > -1) {
   $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
   //error_log("Merged lead: " . strval($neo4j_lead_id));
   $lead_merge = true;
@@ -375,13 +378,13 @@ if ($lead_merge && strlen($neo4j_lead_id) > 0 && strlen($neo4j_fingerprint_id) >
   else error_log('bad on lead has fingerprint');
 }
 
-// known Lead with new Fingerprint
-if ($knownNewFingerprint && strlen($neo4j_lead_id) > 0) {
+// merge Lead with Fingerprint
+if ($lead_merge && strlen($neo4j_lead_id) > 0) {
   $set_merged_query = "UPDATE " . $leads_table_name .
     " SET merged=:neo4j_lead_id" .
     " WHERE id = :lead_id";
   $set_merged_stmt = $conn->prepare($set_merged_query);
-  $set_merged_stmt->bindParam(':lead_id', $merged['lead_id']);
+  $set_merged_stmt->bindParam(':lead_id', $lead_id);
   $set_merged_stmt->bindParam(':neo4j_lead_id', $neo4j_lead_id);
   $set_merged_stmt->execute();
   $set_merged2_query = "UPDATE " . $fingerprints_table_name .

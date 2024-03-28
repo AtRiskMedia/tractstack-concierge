@@ -43,6 +43,9 @@ function getProfile($jwt)
 
 function initProfile($jwt, $payload)
 {
+  // for Neo4j
+  $client = neo4j_connect();
+
   // for SQL
   $databaseService = new DatabaseService();
   $conn = $databaseService->getConnection();
@@ -60,6 +63,8 @@ function initProfile($jwt, $payload)
   // 
 
   // defaults
+  $neo4j_fingerprint_id = false;
+  $neo4j_lead_id = false;
   $firstname = isset($payload->firstname) ? $payload->firstname : false;
   $codeword = isset($payload->codeword) ? $payload->codeword : false;
   $shortBio = isset($payload->bio) ? $payload->bio : "";
@@ -107,6 +112,37 @@ function initProfile($jwt, $payload)
     if (!$key_stmt->rowCount()) {
       return (500);
     }
+    // check if fingerprint is merged
+    $is_merged_query = "SELECT merged";
+    $is_merged_query .= " FROM " . $fingerprints_table_name . " WHERE id=:fingerprint_id";
+    $is_merged_stmt = $conn->prepare($is_merged_query);
+    $is_merged_stmt->bindParam(':fingerprint_id', $fingerprint_id);
+    if ($is_merged_stmt->execute()) {
+      $row = $is_merged_stmt->fetch(PDO::FETCH_ASSOC);
+      if( isset($row['merged']))
+      $neo4j_fingerprint_id = $row['merged'];
+    }
+  }
+
+  if ($lead_id && $neo4j_fingerprint_id) {
+    $neo4j_lead_id = neo4j_merge_lead($client, $lead_id, $neo4j_fingerprint_id);
+    //now update foreign key and neo4j id on leads table
+    if ($neo4j_lead_id && $neo4j_fingerprint_id) {
+      $statement = neo4j_lead_has_fingerprint($neo4j_lead_id, $neo4j_fingerprint_id);
+      if ($statement) {
+        $client->runStatements([$statement]);
+      }
+      $set_merged_query = "UPDATE " . $leads_table_name .
+        " SET merged=:neo4j_lead_id" .
+        " WHERE id = :lead_id";
+      $set_merged_stmt = $conn->prepare($set_merged_query);
+      $set_merged_stmt->bindParam(':lead_id', $lead_id);
+      $set_merged_stmt->bindParam(':neo4j_lead_id', $neo4j_lead_id);
+      $set_merged_stmt->execute();
+      if (!$set_merged_stmt->rowCount()) {
+        return (500);
+      }
+    }
   }
   return (200);
 }
@@ -128,6 +164,10 @@ function saveProfile($jwt, $payload)
   // get jwt
   $fingerprint_id = isset($jwt->fingerprint_id) ? $jwt->fingerprint_id : false;
   $lead_id = isset($jwt->lead_id) ? $jwt->lead_id : false;
+  if($lead_id)
+    error_log(    '     has lead id    ');
+  else error_log('  new lead     ');
+  error_log(' IS THIS ACCURATE??? jwt may not include lead_id if just inited'    );
 
   // defaults
   $firstname = isset($payload->firstname) ? $payload->firstname : false;
@@ -181,7 +221,12 @@ function saveProfile($jwt, $payload)
     }
   }
 
+
+  error_log( '      lead_id:'.json_encode($merged[lead_id]).'    ' );
+
+
   if (!$lead_id && isset($merged['lead_id']) && $fingerprint_id) {
+    error_log('           known lead; new fingerprint        ');
     // this is a known lead with a new fingerprint
     $key_query = "UPDATE " . $fingerprints_table_name .
       " SET lead_id=:lead_id" .
@@ -192,9 +237,11 @@ function saveProfile($jwt, $payload)
     $key_stmt->execute();
     // now update neo4j graph -- merge lead with fingerprint, each time to be sure
     if (!isset($merged['neo4j_lead_id']) && isset($merged['neo4j_fingerprint_id']) && isset($merged['lead_id']) && $fingerprint_id) {
+      error_log('    update neo4j    ');
       $neo4j_lead_id = neo4j_merge_lead($client, $merged['lead_id'], $merged['neo4j_fingerprint_id']);
       //now update foreign key and neo4j id on leads table
       if ($neo4j_lead_id) {
+        error_log('     got neo4j id      ');
         $set_merged_query = "UPDATE " . $leads_table_name .
           " SET merged=:neo4j_lead_id" .
           " WHERE id = :lead_id";
@@ -205,6 +252,7 @@ function saveProfile($jwt, $payload)
       }
     }
   } else if (!isset($merged['email']) && $firstname && $email && $contactPersona && $codeword) {
+    error_log('           new lead; new fingerprint        ');
     // new lead; store to SQL then update neo4j
     $query = "INSERT INTO " . $leads_table_name .
       " SET first_name=:first_name, email=:email, contact_persona=:persona, shortBio=:shortBio," .
@@ -233,6 +281,9 @@ function saveProfile($jwt, $payload)
       if (!$key_stmt->rowCount()) {
         return (500);
       }
+    
+       // now update neo4j below
+      error_log('   new lead_id:'.$lead_id.   '    must update neo4j and then sql again ');
     }
     // update only; no insert
   } else if (
@@ -256,8 +307,11 @@ function saveProfile($jwt, $payload)
       return (500);
     }
   }
+
   // now update neo4j graph -- merge lead with fingerprint, each time to be sure
+  error_log( '  merge check  ');
   if (!isset($merged['neo4j_lead_id']) && isset($merged['neo4j_fingerprint_id']) && $lead_id && $fingerprint_id) {
+    error_log( '    OK!!!!!    '  );
     $neo4j_lead_id = neo4j_merge_lead($client, $lead_id, $merged['neo4j_fingerprint_id']);
     //now update foreign key and neo4j id on leads table
     if ($neo4j_lead_id) {

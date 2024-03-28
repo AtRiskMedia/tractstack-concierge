@@ -223,13 +223,17 @@ function neo4j_fingerprint_has_visit($neo4j_fingerprint, $neo4j_visit)
   return $statement;
 }
 
-function neo4j_lead_has_fingerprint($lead_id, $fingerprint_id)
+function neo4j_lead_has_fingerprint($neo4j_lead, $neo4j_fingerprint)
 {
   if (!NEO4J_ENABLED) return null;
   $statement =  Statement::create(
-    'MATCH (l:Lead {lead_id:$lead_id}) MATCH (f:Fingerprint {fingerprint_id:$fingerprint_id}) MERGE (l)-[:HAS]->(f)',
-    ['fingerprint_id' => strval($fingerprint_id), 'lead_id' => strval($lead_id)]
+    'MATCH (l),(f) WHERE elementId(l)=$neo4j_lead AND elementId(f)=$neo4j_fingerprint MERGE (l)-[:HAS]->(f)',
+    ['neo4j_fingerprint' => $neo4j_fingerprint, 'neo4j_lead' => $neo4j_lead]
   );
+  //$statement =  Statement::create(
+  //  'MATCH (l:Lead {lead_id:$lead_id}) MATCH (f:Fingerprint {fingerprint_id:$fingerprint_id}) MERGE (l)-[:HAS]->(f)',
+  //  ['fingerprint_id' => strval($fingerprint_id), 'lead_id' => strval($lead_id)]
+  //);
   return $statement;
 }
 
