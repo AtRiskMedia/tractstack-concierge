@@ -89,6 +89,7 @@ else $utmContent = '';
 //
 // scenario two -- payload includes codeword, email
 // mode: authenticate
+//  == re-assigns original fingerprint
 //
 // scenario three -- re-use fingerprint
 // mode: reuse
@@ -150,8 +151,10 @@ else $row = [];
 $campaign_id = null;
 $neo4j_campaign_id = false;
 
-$fingerprint_known = isset($row['fingerprint']) ? $row['fingerprint'] : false;
-$fingerprint = (isset($reuse_fingerprint) ? $reuse_fingerprint : isset($row['fingerprint'])) ? strval($row['fingerprint']) : uniqid('t8k-', true);
+//$fingerprint = (isset($reuse_fingerprint) ? $reuse_fingerprint : isset($row['fingerprint'])) ? strval($row['fingerprint']) : uniqid('t8k-', true);
+if($mode === 'reuse' && isset($known_fingerprint)) $fingerprint = $known_fingerprint;
+else if( isset($row['fingerprint'])) $fingerprint = $row['fingerprint'];
+else $fingerprint = uniqid('t8k-', true);
 
 $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
 $neo4j_fingerprint_id = isset($row['neo4j_fingerprint_id']) ? strval($row['neo4j_fingerprint_id']) : false;
