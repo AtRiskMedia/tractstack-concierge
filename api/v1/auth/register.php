@@ -55,7 +55,13 @@ $beliefs_table_name = 'heldbeliefs';
 $corpus_table_name = 'corpus';
 
 // neo4j
-$client = neo4j_connect();
+try {
+  $client = neo4j_connect();
+}
+catch(Exception $e)
+{
+  error_log('Neo4j failed.');
+}
 
 // get POST payload
 $data = json_decode(file_get_contents("php://input"));
@@ -275,7 +281,13 @@ if (!$has_token) {
 }
 // is fingerprint merged?
 if (!($neo4j_fingerprint_id > -1)) {
-  $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
+  try {
+    $neo4j_fingerprint_id = neo4j_merge_fingerprint($client, $fingerprint_id);
+  }
+  catch(Exception $e)
+  {
+    error_log('Neo4j failed.');
+  }
   //error_log("Merged fingerprint: " . strval($neo4j_fingerprint_id));
   if ($neo4j_fingerprint_id > -1)
     $merge = true;
@@ -284,7 +296,13 @@ if (!($neo4j_fingerprint_id > -1)) {
 
 // is visit merged?
 if (!$neo4j_visit_id) {
-  $neo4j_visit_id = neo4j_merge_visit($client, $visit_id, $now_seconds);
+  try {
+    $neo4j_visit_id = neo4j_merge_visit($client, $visit_id, $now_seconds);
+  }
+  catch(Exception $e)
+  {
+    error_log('Neo4j failed.');
+  }
   //error_log("Merged visit: " . strval($neo4j_visit_id));
   if ($neo4j_visit_id)
     $merge = true;
@@ -328,7 +346,13 @@ if ($neo4j_fingerprint_id > -1 && $neo4j_visit_id > -1) {
 
 // is lead merged to this fingerprint?
 if (!$neo4j_lead_id > -1 && $neo4j_fingerprint_id > -1 && $lead_id > -1) {
-  $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
+  try {
+    $neo4j_lead_id = neo4j_merge_lead($client, $lead_id);
+  }
+  catch(Exception $e)
+  {
+    error_log('Neo4j failed.');
+  }
   //error_log("Merged lead: " . strval($neo4j_lead_id));
   $lead_merge = true;
 }
