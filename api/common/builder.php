@@ -317,7 +317,7 @@ function getSettings()
 {
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
-  $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
+  $front_settings = parse_ini_file(FRONT_ROOT.'.env');
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
   $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
 
@@ -343,12 +343,12 @@ function postSettings($payload)
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
   $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
 
-  $frontend_keys = ["TITLE","AUTHOR","BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","CONCIERGE_BASE_URL_FRONT","CONCIERGE_REFRESH_TOKEN_URL_FRONT",
-    "SHOPIFY_SHOP_PASSWORD_FRONT","GATSBY_SHOPIFY_STORE_URL","GATSBY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL_FRONT","SITE_URL",
-    "STORYKEEP_URL","HOMEPAGE","READ_THRESHOLD","SOFT_READ_THRESHOLD","CONCIERGE_SYNC","CONCIERGE_FORCE_INTERVAL",
-    "IMPRESSIONS_DELAY","SLOGAN","FOOTER","ACTION","LOCAL_STORAGE_KEY","SOCIAL","INITIALIZE_SHOPIFY"];
+  $frontend_keys = ["PUBLIC_IMAGE_URL","DRUPAL_BASE_URL","CONCIERGE_BASE_URL_FRONT","PUBLIC_CONCIERGE_REFRESH_TOKEN_URL",
+    "PRIVATE_SHOPIFY_STOREFRONT_ACCESS_TOKEN","PUBLIC_SHOPIFY_SHOP","PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN","DRUPAL_URL_FRONT","SITE_URL",
+    "PUBLIC_STORYKEEP_URL","PUBLIC_HOME","PUBLIC_READ_THRESHOLD","PUBLIC_SOFT_READ_THRESHOLD",
+    "PUBLIC_IMPRESSIONS_DELAY","PUBLIC_SLOGAN","PUBLIC_FOOTER","PUBLIC_SOCIALS"];
   $storykeep_keys = ["BASIC_AUTH_USERNAME","BASIC_AUTH_PASSWORD","BUILDER_SECRET_KEY","CONCIERGE_BASE_URL_BACK","CONCIERGE_REFRESH_TOKEN_URL_BACK",
-    "SHOPIFY_SHOP_PASSWORD_BACK","GATSBY_SHOPIFY_STORE_URL","DRUPAL_URL_BACK","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
+    "SHOPIFY_SHOP_PASSWORD_BACK","PUBLIC_SHOPIFY_SHOP","DRUPAL_URL_BACK","DRUPAL_APIBASE","DRUPAL_OAUTH_CLIENT_ID",
     "DRUPAL_OAUTH_CLIENT_SECRET","DRUPAL_OAUTH_GRANT_TYPE","DRUPAL_OAUTH_SCOPE","STORYKEEP_URL","OPENDEMO","MESSAGE_DELAY","HOMEPAGE","SLOGAN"];
   $concierge_keys = ["DB_HOST","DB_NAME","DB_USER","DB_PASSWORD","SECRET_KEY","BUILDER_SECRET_KEY","NEO4J_URI",
     "NEO4J_USER","NEO4J_SECRET","NEO4J_ENABLED","CONCIERGE_ROOT","FRONT_ROOT","STORYKEEP_ROOT","DRUPAL_OAUTH_ROOT","WATCH_ROOT"];
@@ -378,7 +378,7 @@ function postSettings($payload)
       }
     }
   }
-  file_put_contents($concierge_settings['FRONT_ROOT'].'.env.production',implode(PHP_EOL, prepareIniFile($front_settings)));
+  file_put_contents($concierge_settings['FRONT_ROOT'].'.env',implode(PHP_EOL, prepareIniFile($front_settings)));
   file_put_contents($concierge_settings['STORYKEEP_ROOT'].'.env.production',implode(PHP_EOL, prepareIniFile($storykeep_settings)));
   file_put_contents($concierge_settings['CONCIERGE_ROOT'].'.env',implode(PHP_EOL, prepareIniFile($concierge_settings)));
   echo json_encode(array(
