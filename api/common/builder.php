@@ -429,7 +429,7 @@ function triggerPublish($data) {
     //$locked = parse_ini_file($concierge_settings['WATCH_ROOT'].'build.lock');
     $target = $data->target;
     file_put_contents($concierge_settings['WATCH_ROOT'].'build.lock', $target);
-    file_put_contents($concierge_settings['CONCIERGE_ROOT'].'api/styles/tailwind.whitelist', implode(PHP_EOL, $data->whitelist));
+    file_put_contents($concierge_settings['CONCIERGE_ROOT'].'api/styles/frontend/tailwind.whitelist', implode(PHP_EOL, $data->whitelist));
     echo json_encode(array(
       "data" => json_encode(array(
        "build" => true
