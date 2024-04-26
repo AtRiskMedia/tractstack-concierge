@@ -339,7 +339,7 @@ function postSettings($payload)
 {
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   $storykeep_settings = parse_ini_file(STORYKEEP_ROOT.'.env.production');
-  $front_settings = parse_ini_file(FRONT_ROOT.'.env.production');
+  $front_settings = parse_ini_file(FRONT_ROOT.'.env');
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
   $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
 
