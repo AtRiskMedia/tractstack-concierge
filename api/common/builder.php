@@ -320,6 +320,7 @@ function getSettings()
   $front_settings = parse_ini_file(FRONT_ROOT.'.env');
   $oauth_public_key = file_get_contents(DRUPAL_OAUTH_ROOT.'public.key');
   $oauth_private_key = file_get_contents(DRUPAL_OAUTH_ROOT.'private.key');
+  error_log(json_encode($front_settings));
 
   echo json_encode(array(
     "data" => json_encode(array(
@@ -416,7 +417,7 @@ function prepareIniFile($array)
             else if (str_contains($val,'!'))
                 $data[] = $key.'="'.$val.'"';
             else {
-                $data[] = $key.'='.(is_numeric($val) ? $val : (ctype_upper($val) || strpos($val, ' ') == false ? $val : '"'.$val.'"'));
+                $data[] = $key.'='.(is_numeric($val) ? $val : (strpos($val,'|') || ctype_upper($val) || strpos($val, ' ') == false ? $val : '"'.$val.'"'));
             }
         }
         $data[] = null;
