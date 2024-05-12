@@ -3,9 +3,9 @@ require_once "../../../vendor/autoload.php";
 include_once '../../common/database.php';
 include_once '../../common/neo4j.php';
 
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', 1);
+//ini_set('session.cookie_httponly', 1);
+//ini_set('session.use_only_cookies', 1);
+//ini_set('session.cookie_secure', 1);
 
 use \Firebase\JWT\JWT;
 
@@ -34,6 +34,7 @@ $fingerprint_registered = false;
 $now_seconds = time();
 $now = date('Y-m-d H:i:s', $now_seconds);
 $expiry_claim = strtotime("now +15 minutes"); // life of JWT
+//$expiry_claim = strtotime("now +45 seconds"); // life of JWT
 $valid_until = date('Y-m-d H:i:s', strtotime("now +14 days")); // life of refreshToken
 $secret_key = SECRET_KEY;
 $auth = false;
@@ -489,12 +490,13 @@ $token = array(
     "auth" => $auth
   )
 );
-setcookie("refreshToken", $refreshToken, ['httponly' => true, 'samesite' => 'Lax']);
+//setcookie("refreshToken", $refreshToken, ['httponly' => true, 'samesite' => 'Lax']);
 $jwt = JWT::encode($token, $secret_key);
 $http_response_code = 200;
 $results = array(
   "message" => "Successful login.",
   "jwt" => $jwt,
+  "refreshToken" => $refreshToken,
   "auth" => $auth,
   "fingerprint" => $fingerprint,
   "encryptedEmail" => $newEncryptedEmail,

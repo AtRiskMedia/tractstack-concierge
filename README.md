@@ -161,3 +161,4 @@ CREATE TABLE actions(
 
 
 # note: v0.2.0 switched to VARCHAR(64) from INT(11) for neo4j merged id
+# note: v0.3.0 switched to no httpOnly cookie and pass refreshToken in jwt payload

@@ -4,9 +4,9 @@ require_once "../../../vendor/autoload.php";
 
 include_once '../../common/database.php';
 
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', 1);
+//ini_set('session.cookie_httponly', 1);
+//ini_set('session.use_only_cookies', 1);
+//ini_set('session.cookie_secure', 1);
 
 use \Firebase\JWT\JWT;
 
@@ -31,6 +31,7 @@ $visit_id = false;
 $lead_id = false;
 $has_token = false;
 $now = date('Y-m-d H:i:s');
+//$expiry_claim = strtotime("now +45 seconds"); // life of JWT
 $expiry_claim = strtotime("now +15 minutes"); // life of JWT
 $valid_until = date('Y-m-d H:i:s', strtotime("now +14 days")); // life of refreshToken
 $secret_key = SECRET_KEY;
@@ -55,9 +56,10 @@ $leads_table_name = 'leads';
 $data = json_decode(file_get_contents("php://input"));
 $email = isset($data->encryptedEmail) ? $data->encryptedEmail : false;
 $codeword = isset($data->encryptedCode) ? $data->encryptedCode : false;
+$refreshToken = isset($data->refreshToken) ? $data->refreshToken : false;
 
 // get cookie
-$refreshToken = $_COOKIE['refreshToken'] ?? false;
+//$refreshToken = $_COOKIE['refreshToken'] ?? false;
 if ($refreshToken) {
   // does active refreshToken exist?
   $token_check_query = "SELECT t.id as token_id, f.lead_id as lead_id, t.fingerprint_id, f.fingerprint, v.id as visit_id, UNIX_TIMESTAMP(v.created_at) as created_at, l.first_name FROM "
@@ -68,6 +70,7 @@ if ($refreshToken) {
   if ($codeword && $email) {
     $token_check_query .= "  AND :email=to_base64(aes_encrypt(l.email,Password(:secret))) AND :codeword=to_base64(l.passwordHash)";
   }
+  error_log('     '.$token_check_query.'    ');
   $token_check_stmt = $conn->prepare($token_check_query);
   $token_check_stmt->bindParam(':secret', $secret_key);
   $token_check_stmt->bindParam(':refreshToken', $refreshToken);
@@ -127,13 +130,14 @@ if ($has_token) {
         "auth" => $auth
       )
     );
-    setcookie("refreshToken", $newRefreshToken, ['httponly' => true, 'samesite' => 'Lax']);
+    //setcookie("refreshToken", $newRefreshToken, ['httponly' => true, 'samesite' => 'Lax']);
     $jwt = JWT::encode($token, $secret_key);
     $http_response_code = 200;
     echo json_encode(
       array(
         "message" => "Successful login.",
         "jwt" => $jwt,
+        "refreshToken" => $newRefreshToken,
         "auth" => $auth,
         "encryptedEmail" => $encryptedEmail,
         "encryptedCode" => $encryptedCode,
