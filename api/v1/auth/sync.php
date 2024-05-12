@@ -40,6 +40,9 @@ $secret_key = SECRET_KEY;
 $auth = false;
 $firstname = false;
 $heldBeliefs = false;
+if( NEO4J_ENABLED  )
+  $neo4jEnabled = true;
+else $neo4jEnabled = false;
 
 // response
 $http_response_code = 400;
@@ -503,6 +506,7 @@ $results = array(
   "encryptedCode" => $newEncryptedCode,
   "first_name" => $firstname,
   "beliefs" => $heldBeliefs,
+  "neo4jEnabled" => $neo4jEnabled,
   "known_lead" => !!$firstname,
   "created_at" => $now_seconds
 );
