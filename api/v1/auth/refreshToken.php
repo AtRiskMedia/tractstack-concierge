@@ -4,9 +4,9 @@ require_once "../../../vendor/autoload.php";
 
 include_once '../../common/database.php';
 
-//ini_set('session.cookie_httponly', 1);
-//ini_set('session.use_only_cookies', 1);
-//ini_set('session.cookie_secure', 1);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_secure', 1);
 
 use \Firebase\JWT\JWT;
 
@@ -130,7 +130,10 @@ if ($has_token) {
         "auth" => $auth
       )
     );
-    //setcookie("refreshToken", $newRefreshToken, ['httponly' => true, 'samesite' => 'Lax']);
+
+    // do this for builder *for now*
+    setcookie("refreshToken", $newRefreshToken, ['httponly' => true, 'samesite' => 'Lax']);
+
     $jwt = JWT::encode($token, $secret_key);
     $http_response_code = 200;
     echo json_encode(

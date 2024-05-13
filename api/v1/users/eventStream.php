@@ -6,9 +6,9 @@ include_once '../../common/events.php';
 include_once '../../common/database.php';
 include_once '../../common/neo4j.php';
 
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', 1);
+//ini_set('session.cookie_httponly', 1);
+//ini_set('session.use_only_cookies', 1);
+//ini_set('session.cookie_secure', 1);
 
 use \Firebase\JWT\JWT;
 

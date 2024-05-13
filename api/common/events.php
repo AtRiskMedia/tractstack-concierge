@@ -4,6 +4,10 @@ function processEventStream($jwt, $payload)
 {
   // neo4j
   $client = neo4j_connect();
+  if( NEO4J_ENABLED  )
+    $neo4jEnabled = true;
+  else $neo4jEnabled = false;
+
   // for SQL
   $databaseService = new DatabaseService();
   $conn = $databaseService->getConnection();
@@ -63,13 +67,14 @@ function processEventStream($jwt, $payload)
       die();
     }
   }
-  if (!$neo4j_visit_id && !$neo4j_fingerprint_id) {
+  if ($neo4jEnabled && !$neo4j_visit_id && !$neo4j_fingerprint_id) {
     // visit has not yet been merged; something is wrong
     error_log('this visit has not been merged to neo4j; something is wrong');
     return (401);
   }
 
   // is this a known campaign
+  $newCampaign = true;
   if($utmCampaign) {
     // get campaign id if known
     $utm_query = "SELECT c.id, c.merged";
@@ -80,26 +85,25 @@ function processEventStream($jwt, $payload)
     if ($utm_stmt->execute()) {
       $row = $utm_stmt->fetch(PDO::FETCH_ASSOC);
       $campaign_id = isset($row['id']) ? $row['id'] : false;
-      $neo4j_campaign_id = isset($row['merged']) ? $row['merged'] : false;
+      $neo4j_campaign_id = isset($row['merged']) ? $row['merged'] : null;
+      if( $campaign_id ) $newCampaign = false;
     }
-    // add to graph if not already
-    if( !$neo4j_campaign_id ) { 
-      // must add to graph
-      $neo4j_campaign_id = neo4j_merge_campaign($client, $utmCampaign);
-      if( $neo4j_campaign_id ){
-      // now add to db
-        $query = "INSERT INTO " . $campaigns_table_name . " SET name = :utmCampaign, merged = :neo4j_campaign_id";
-        $stmt = $conn->prepare($query);
-        $stmt->bindParam(':utmCampaign', $utmCampaign);
-        $stmt->bindParam(':neo4j_campaign_id', $neo4j_campaign_id);
-        if ($stmt->execute()) {
-          $campaign_id = strval($conn->lastInsertId());
-          //error_log("  New campaign: " . strval($campaign_id). '(' .strval($neo4j_campaign_id).')');
-        } else {
-          http_response_code(500);
-          die();
-        }
-      }
+  }
+  
+  if($newCampaign) {
+    // add to graph (or get null)
+    $neo4j_campaign_id = neo4j_merge_campaign($client, $utmCampaign);
+    // now add to db
+    $query = "INSERT INTO " . $campaigns_table_name . " SET name = :utmCampaign, merged = :neo4j_campaign_id";
+    $stmt = $conn->prepare($query);
+    $stmt->bindParam(':utmCampaign', $utmCampaign);
+    $stmt->bindParam(':neo4j_campaign_id', $neo4j_campaign_id);
+    if ($stmt->execute()) {
+      $campaign_id = strval($conn->lastInsertId());
+      //error_log("  New campaign: " . strval($campaign_id). '(' .strval($neo4j_campaign_id).')');
+    } else {
+      http_response_code(500);
+      die();
     }
   }
 
@@ -237,7 +241,7 @@ function processEventStream($jwt, $payload)
             if (strlen($neo4j_object_id) > 0 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_storyFragment_contains_corpus($neo4j_storyFragment_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on StoryFragment :CONTAINS Pane' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
+              else if ($neo4jEnabled) error_log('bad on StoryFragment :CONTAINS Pane' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
             }
             break;
 
@@ -247,7 +251,7 @@ function processEventStream($jwt, $payload)
             if ($neo4j_tractStack_id > -1 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_tractStack_contains_storyFragment($neo4j_tractStack_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on TractStack :CONTAINS StoryFragment' . "  " . $neo4j_tractStack_id . "   " . $neo4j_storyFragment_id);
+              else if ($neo4jEnabled) error_log('bad on TractStack :CONTAINS StoryFragment' . "  " . $neo4j_tractStack_id . "   " . $neo4j_storyFragment_id);
             }
             break;
 
@@ -261,7 +265,7 @@ function processEventStream($jwt, $payload)
             if (strlen($neo4j_object_id) > 0 && strlen($neo4j_storyFragment_id) > 0) {
               $statement = neo4j_menuitem_links_storyFragment($neo4j_object_id, $neo4j_storyFragment_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on MenuItem :LINKS StoryFragment' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
+              else if ($neo4jEnabled) error_log('bad on MenuItem :LINKS StoryFragment' . "  " . $neo4j_object_id . "   " . $neo4j_storyFragment_id);
             }
             break;
 
@@ -271,7 +275,7 @@ function processEventStream($jwt, $payload)
             if ($neo4j_tractStack_id > -1 && strlen($neo4j_object_id) > 0) {
               $statement = neo4j_tractStack_contains_belief($neo4j_tractStack_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on TractStack :CONTAINS Belief  ' . $neo4j_tractStack_id . "   " . $neo4j_object_id);
+              else if ($neo4jEnabled) error_log('bad on TractStack :CONTAINS Belief  ' . $neo4j_tractStack_id . "   " . $neo4j_object_id);
             }
             break;
 
@@ -281,7 +285,7 @@ function processEventStream($jwt, $payload)
             if (strlen($neo4j_object_id) > 0 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_corpus($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on Pane contains H5P ' . $neo4j_object_id . "   " . $neo4j_parent_id);
+              else if ($neo4jEnabled) error_log('bad on Pane contains H5P ' . $neo4j_object_id . "   " . $neo4j_parent_id);
             }
             break;
 
@@ -291,7 +295,7 @@ function processEventStream($jwt, $payload)
             if ($neo4j_object_id >-1 && $neo4j_parent_id > -1) {
               $statement = neo4j_corpus_contains_impression($neo4j_parent_id, $neo4j_object_id);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on StoryFragment contains Impression '  . $neo4j_object_id . "   " . $neo4j_parent_id);
+              else if ($neo4jEnabled) error_log('bad on StoryFragment contains Impression '  . $neo4j_object_id . "   " . $neo4j_parent_id);
             }
             break;
         }
@@ -311,7 +315,7 @@ function processEventStream($jwt, $payload)
         $thisObjectType = $data[2];
         $thisObjectNeo4jId = $data[4];
         $thisObjectSqlId = $data[5];
-        if ($thisObjectName && $thisObjectId && $thisObjectType && $thisObjectNeo4jId && !$thisObjectSqlId) {
+        if ($thisObjectName && $thisObjectId && $thisObjectType && !$thisObjectSqlId) {
           // insert to corpus
           $thisData = [$thisObjectName, $thisObjectId, $thisObjectType, $thisObjectNeo4jId];
           $corpus_merge_stmt->execute($thisData);
@@ -449,7 +453,7 @@ function processEventStream($jwt, $payload)
             if(in_array($verb, ['ENTERED','READ','GLOSSED','CLICKED']) && !empty($utmCampaign ))
               neo4j_merge_corpus_campaign($client, $neo4j_object_id,$neo4j_campaign_id, $utmSource, $utmMedium,$utmTerm, $utmContent, $httpReferrer);
             if ($statement) $actions[] = $statement;
-            else error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
+            else if ($neo4jEnabled) error_log('bad on Visit :VERB * ' . $type . "  " . $neo4j_visit_id . "   " . $neo4j_object_id . "  " . $verb . "  " . $score);
           }
           break;
 
@@ -458,7 +462,7 @@ function processEventStream($jwt, $payload)
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             $statement = neo4j_merge_menuitem_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
-            else error_log('bad on Visit :CLICKED MenuItem ' . $neo4j_visit_id . "   " . $neo4j_object_id);
+            else if ($neo4jEnabled) error_log('bad on Visit :CLICKED MenuItem ' . $neo4j_visit_id . "   " . $neo4j_object_id);
           }
           break;
 
@@ -527,13 +531,13 @@ function processEventStream($jwt, $payload)
             if ($previous_verb ) {
               $statement = neo4j_merge_belief_remove_action($neo4j_fingerprint_id, $neo4j_object_id, $previous_verb, $object);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on Remove Fingerprint :VERB* Belief ' . $previous_verb. ' ('.$object. ') ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
+              else if ($neo4jEnabled) error_log('bad on Remove Fingerprint :VERB* Belief ' . $previous_verb. ' ('.$object. ') ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
             // merge belief to fingerprint
             if ($verb !== 'UNSET') {
               $statement = neo4j_merge_belief_action($neo4j_fingerprint_id, $neo4j_object_id, $verb, $object);
               if ($statement) $actions[] = $statement;
-              else error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
+              else if ($neo4jEnabled) error_log('bad on Fingerprint :VERB* Belief ' . $neo4j_fingerprint_id . "   " . $neo4j_object_id);
             }
           }
          break;
@@ -543,7 +547,7 @@ function processEventStream($jwt, $payload)
             $neo4j_object_id = isset($neo4j_corpus_ids[$id]) ? $neo4j_corpus_ids[$id] : $neo4j_corpus_ids_merged[$id];
             $statement = neo4j_merge_impression_action($neo4j_visit_id, $neo4j_object_id);
             if ($statement) $actions[] = $statement;
-            else error_log('bad on Visit :CLICKED Impression ' . $neo4j_visit_id . "   " . $neo4j_object_id);
+            else if ($neo4jEnabled) error_log('bad on Visit :CLICKED Impression ' . $neo4j_visit_id . "   " . $neo4j_object_id);
           }
           break;
 
