@@ -1,7 +1,6 @@
 <?php
 
 require "../../../vendor/autoload.php";
-
 include_once '../../common/events.php';
 include_once '../../common/database.php';
 include_once '../../common/neo4j.php';
@@ -48,6 +47,9 @@ if ($jwt) {
     $http_response_code = 200;
     if (isset($data))
       processEventStream($decoded->data, $data);
+    echo json_encode(array(
+      "message" => "Success."
+    ));
   } catch (Exception $e) {
     http_response_code(401);
     //error_log($e->getMessage());
