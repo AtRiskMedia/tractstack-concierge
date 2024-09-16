@@ -32,7 +32,7 @@ $secret_key = SECRET_KEY;
 $data = json_decode(file_get_contents("php://input"));
 
 // response
-$http_response_code = 403;
+$http_response_code = 401;
 
 $jwt = null;
 $databaseService = new DatabaseService();
