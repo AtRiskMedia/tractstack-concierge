@@ -48,9 +48,6 @@ if ($jwt) {
     $decoded = JWT::decode($jwt, $secret_key, array('HS256'));
     if (isset($data)) {
       if (isset($data->firstname, $data->codeword, $data->persona, $data->email, $data->init))
-        if ($data->init)
-          error_log('init');
-        else error_log('save');
       if ($data->init)
         $http_response_code = initProfile($decoded->data, $data);
       else

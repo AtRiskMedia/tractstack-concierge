@@ -66,11 +66,10 @@ if ($refreshToken) {
     . $tokens_table_name . " as t LEFT JOIN " . $fingerprints_table_name . " as f ON f.id=t.fingerprint_id LEFT JOIN "
     . $visits_table_name . " as v ON f.id=v.fingerprint_id LEFT JOIN "
     . $leads_table_name . " as l ON l.id=f.lead_id "
-    . "WHERE refreshToken = aes_encrypt(:refreshToken,Password(:secret)) AND valid_until > :now";
+    . "WHERE aes_decrypt(refreshToken,Password(:secret)) = :refreshToken AND valid_until > :now";
   if ($codeword && $email) {
-    $token_check_query .= "  AND :email=to_base64(aes_encrypt(l.email,Password(:secret))) AND :codeword=to_base64(l.passwordHash)";
+    $token_check_query .= "  AND :email=to_base64(aes_decrypt(l.email,Password(:secret))) AND :codeword=to_base64(l.passwordHash)";
   }
-  error_log('     '.$token_check_query.'    ');
   $token_check_stmt = $conn->prepare($token_check_query);
   $token_check_stmt->bindParam(':secret', $secret_key);
   $token_check_stmt->bindParam(':refreshToken', $refreshToken);

@@ -144,6 +144,10 @@ function initProfile($jwt, $payload)
       }
     }
   }
+  echo json_encode(array(
+    "message" => "New profile saved.",
+    "error" => null,
+  ));
   return (200);
 }
 
@@ -316,4 +320,9 @@ function saveProfile($jwt, $payload)
       }
     }
   }
+  echo json_encode(array(
+    "message" => "Profile saved.",
+    "error" => null,
+  ));
+  return (200);
 }
