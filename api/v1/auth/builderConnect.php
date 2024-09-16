@@ -32,7 +32,7 @@ $builder_secret_key = BUILDER_SECRET_KEY;
 $auth = false;
 
 // response
-$http_response_code = 400;
+$http_response_code = 401;
 
 // connect to database
 $databaseService = new DatabaseService();
@@ -57,7 +57,7 @@ if ($secret === $builder_secret_key) {
     $fingerprint_id = isset($row['fingerprint_id']) ? strval($row['fingerprint_id']) : false;
     $fingerprint_registered = $fingerprint_id ? true : false;
   } else {
-    http_response_code(500);
+    http_response_code(403);
     die();
   }
 
@@ -70,7 +70,7 @@ if ($secret === $builder_secret_key) {
       $fingerprint_id = strval($conn->lastInsertId());
       //error_log("New fingerprint: " . strval($fingerprint_id));
     } else {
-      http_response_code(500);
+      http_response_code(403);
       die();
     }
   }
@@ -92,7 +92,7 @@ if ($secret === $builder_secret_key) {
     $has_token = is_int($token_id) ? $token_id : false;
     $http_response_code = 200;
   } else {
-    http_response_code(500);
+    http_response_code(403);
     die();
   }
 
@@ -115,7 +115,7 @@ if ($secret === $builder_secret_key) {
     if ($token_create_stmt->execute()) {
       $token_id = strval($conn->lastInsertId());
     } else {
-      http_response_code(500);
+      http_response_code(403);
       die();
     }
   }

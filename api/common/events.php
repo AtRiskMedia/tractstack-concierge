@@ -70,7 +70,7 @@ function processEventStream($jwt, $payload)
   if ($neo4jEnabled && !$neo4j_visit_id && !$neo4j_fingerprint_id) {
     // visit has not yet been merged; something is wrong
     error_log('this visit has not been merged to neo4j; something is wrong');
-    return (401);
+    return (403);
   }
 
   // is this a known campaign
@@ -102,7 +102,7 @@ function processEventStream($jwt, $payload)
       $campaign_id = strval($conn->lastInsertId());
       //error_log("  New campaign: " . strval($campaign_id). '(' .strval($neo4j_campaign_id).')');
     } else {
-      http_response_code(500);
+      http_response_code(403);
       die();
     }
   }
@@ -485,7 +485,7 @@ function processEventStream($jwt, $payload)
               $stmt->bindParam(':belief_id', $sql_corpus_ids[$id]);
               $stmt->bindParam(':fingerprint_id', $fingerprint_id);
               if (!$stmt->execute()) {
-                http_response_code(500);
+                http_response_code(403);
                 die();
               }
             } else if ($previous_verb && $previous_verb_object) {
@@ -497,7 +497,7 @@ function processEventStream($jwt, $payload)
               $stmt->bindParam(':fingerprint_id', $fingerprint_id);
               $stmt->bindParam(':object', $object);
               if (!$stmt->execute()) {
-                http_response_code(500);
+                http_response_code(403);
                 die();
               }
             } else if ($previous_verb) {
@@ -509,7 +509,7 @@ function processEventStream($jwt, $payload)
               $stmt->bindParam(':fingerprint_id', $fingerprint_id);
               $stmt->bindParam(':verb', $verb);
               if (!$stmt->execute()) {
-                http_response_code(500);
+                http_response_code(403);
                 die();
               }
             } else {
@@ -521,7 +521,7 @@ function processEventStream($jwt, $payload)
               $stmt->bindParam(':verb', $verb);
               $stmt->bindParam(':object', $object);
               if (!$stmt->execute()) {
-                http_response_code(500);
+                http_response_code(403);
                 die();
               }
             }

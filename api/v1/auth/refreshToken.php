@@ -41,7 +41,7 @@ $encryptedEmail = false;
 $encryptedCode = false;
 
 // response
-$http_response_code = 400;
+$http_response_code = 401;
 
 // connect to database
 $conn = null;

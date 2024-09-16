@@ -178,7 +178,7 @@ if ($pre_register_stmt->execute()) {
   http_response_code(401);
   die();
 } else {
-  http_response_code(500);
+  http_response_code(403);
   die();
 }
 
@@ -191,7 +191,7 @@ if (!$fingerprint_registered && !($fingerprint_id > -1 )) {
     $fingerprint_id = strval($conn->lastInsertId());
     //error_log("New fingerprint: " . strval($fingerprint_id));
   } else {
-    http_response_code(500);
+    http_response_code(403);
     die();
   }
 }
@@ -217,7 +217,7 @@ if ($token_check_stmt->execute()) {
   $has_token = is_int($token_id) ? $token_id : false;
   $http_response_code = 200;
 } else {
-  http_response_code(500);
+  http_response_code(403);
   die();
 }
 
@@ -251,7 +251,7 @@ if (!($visit_id > -1 )) {
     $visit_id = strval($conn->lastInsertId());
     //error_log("New visit: " . strval($visit_id));
   } else {
-    http_response_code(500);
+    http_response_code(403);
     die();
   }
 }
@@ -275,7 +275,7 @@ if (!$has_token) {
     $token_id = strval($conn->lastInsertId());
     //error_log("New token: " . strval($token_id));
   } else {
-    http_response_code(500);
+    http_response_code(403);
     die();
   }
 }

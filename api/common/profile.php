@@ -20,7 +20,7 @@ function getProfile($jwt)
     $email = isset($row['email']) ? $row['email'] : false;
     $shortBio = isset($row['shortBio']) ? $row['shortBio'] : false;
   } else {
-    return (500);
+    return (403);
   }
 
   if ($firstname && $contactPersona && $email) {
@@ -59,8 +59,6 @@ function initProfile($jwt, $payload)
   // scenario one -- payload includes fingerprint, codeword, email AND no pre-existing match on email
   // 
   // scenario two -- payload includes fingerprint, codeword, email BUT there's a pre-existing match on email
-  // 401
-  // 
 
   // defaults
   $neo4j_fingerprint_id = false;
@@ -79,10 +77,10 @@ function initProfile($jwt, $payload)
     $count = $pre_register_stmt->rowCount();
     if ($count) {
       // pre-existing match found
-      return (401);
+      return (403);
     }
   } else {
-    return (500);
+    return (403);
   }
 
   $query = "INSERT INTO " . $leads_table_name .
@@ -98,7 +96,7 @@ function initProfile($jwt, $payload)
   if ($stmt->execute()) {
     $lead_id = $conn->lastInsertId();
   } else {
-    return (500);
+    return (403);
   }
   if ($lead_id) {
     //now update foreign key on fingerprints table
@@ -110,7 +108,7 @@ function initProfile($jwt, $payload)
     $key_stmt->bindParam(':fingerprint_id', $fingerprint_id);
     $key_stmt->execute();
     if (!$key_stmt->rowCount()) {
-      return (500);
+      return (403);
     }
     // check if fingerprint is merged
     $is_merged_query = "SELECT merged";
@@ -140,7 +138,7 @@ function initProfile($jwt, $payload)
       $set_merged_stmt->bindParam(':neo4j_lead_id', $neo4j_lead_id);
       $set_merged_stmt->execute();
       if (!$set_merged_stmt->rowCount()) {
-        return (500);
+        return (403);
       }
     }
   }
@@ -217,7 +215,7 @@ function saveProfile($jwt, $payload)
       $merged['email'] = isset($row['email']) ? $row['email'] : false;
       $merged['shortBio'] = isset($row['shortBio']) ? $row['shortBio'] : false;
     } else {
-      return (500);
+      return (403);
     }
   }
 
@@ -259,7 +257,7 @@ function saveProfile($jwt, $payload)
     if ($stmt->execute()) {
       $lead_id = $conn->lastInsertId();
     } else {
-      return (500);
+      return (403);
     }
     if ($lead_id) {
       //now update foreign key on fingerprints table
@@ -271,7 +269,7 @@ function saveProfile($jwt, $payload)
       $key_stmt->bindParam(':fingerprint_id', $fingerprint_id);
       $key_stmt->execute();
       if (!$key_stmt->rowCount()) {
-        return (500);
+        return (403);
       }
     
        // now update neo4j below
@@ -295,7 +293,7 @@ function saveProfile($jwt, $payload)
     if ($neo4j_lead_id) $update_stmt->bindParam(':neo4j_lead_id', $neo4j_lead_id);
     $update_stmt->execute();
     if (!$update_stmt->rowCount()) {
-      return (500);
+      return (403);
     }
   }
 
@@ -316,7 +314,7 @@ function saveProfile($jwt, $payload)
       $set_merged_stmt->bindParam(':neo4j_lead_id', $neo4j_lead_id);
       $set_merged_stmt->execute();
       if (!$set_merged_stmt->rowCount()) {
-        return (500);
+        return (403);
       }
     }
   }
