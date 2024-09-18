@@ -11,32 +11,37 @@ function getAnalytics($id, $type, $duration) {
     $databaseService = new DatabaseService();
     $conn = $databaseService->getConnection();
 
-    // Determine the date range based on the duration
+    // Determine the date range and interval based on the duration
     $dateFilter = "";
+    $intervalExpression = "";
+    $limit = 0;
     switch ($duration) {
-        case 'daily':
-            $dateFilter = "AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)";
+	case 'daily':
+            $dateFilter = "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)";
+            $intervalExpression = "FLOOR(TIMESTAMPDIFF(HOUR, a.created_at, NOW()))";
+            $limit = 24;
             break;
         case 'weekly':
-            $dateFilter = "AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)";
+            $dateFilter = "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+            $intervalExpression = "FLOOR(TIMESTAMPDIFF(DAY, a.created_at, NOW()))";
+            $limit = 7;
             break;
         case 'monthly':
-            $dateFilter = "AND a.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
-            break;
-        default:
-            // No filter if duration is not specified or invalid
+            $dateFilter = "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 28 DAY)";
+            $intervalExpression = "FLOOR(TIMESTAMPDIFF(DAY, a.created_at, NOW()))";
+            $limit = 28;
             break;
     }
 
     if ($type === "storyfragment") {
-        $activity_query = "
+        $pie_query = "
         WITH storyfragment AS (
             SELECT id, object_id, object_name
             FROM corpus
             WHERE object_type = 'StoryFragment' AND object_id = :id
         ),
         storyfragment_actions AS (
-            SELECT 
+            SELECT
                 sf.id,
                 sf.object_id,
                 sf.object_name,
@@ -49,7 +54,7 @@ function getAnalytics($id, $type, $duration) {
             GROUP BY sf.id, sf.object_id, sf.object_name, a.verb
         ),
         pane_actions AS (
-            SELECT 
+            SELECT
                 c.id,
                 c.object_id,
                 c.object_name,
@@ -68,9 +73,51 @@ function getAnalytics($id, $type, $duration) {
         SELECT * FROM pane_actions
         ORDER BY object_type DESC, id, verb_count DESC
         ";
+
+        $line_query = "
+        WITH storyfragment AS (
+            SELECT id, object_id, object_name
+            FROM corpus
+            WHERE object_type = 'StoryFragment' AND object_id = :id
+        ),
+        storyfragment_actions AS (
+            SELECT
+                sf.id,
+                sf.object_id,
+                sf.object_name,
+                'StoryFragment' AS object_type,
+                a.verb,
+                $intervalExpression AS time_interval,
+                COUNT(a.id) AS total_count
+            FROM storyfragment sf
+            LEFT JOIN actions a ON sf.id = a.object_id
+            WHERE 1=1 $dateFilter
+            GROUP BY sf.id, sf.object_id, sf.object_name, a.verb, time_interval
+        ),
+        pane_actions AS (
+            SELECT
+                c.id,
+                c.object_id,
+                c.object_name,
+                'Pane' AS object_type,
+                a.verb,
+                $intervalExpression AS time_interval,
+                COUNT(a.id) AS total_count
+            FROM actions a
+            JOIN corpus c ON a.object_id = c.id
+            WHERE a.parent_id = (SELECT id FROM storyfragment)
+            AND c.object_type = 'Pane'
+            $dateFilter
+            GROUP BY c.id, c.object_id, c.object_name, a.verb, time_interval
+        )
+        SELECT * FROM storyfragment_actions
+        UNION ALL
+        SELECT * FROM pane_actions
+        ORDER BY object_type DESC, id, verb, time_interval
+        ";
     } elseif ($type === "pane") {
-        $activity_query = "
-        SELECT 
+        $pie_query = "
+        SELECT
             c.id,
             c.object_id,
             c.object_name,
@@ -84,6 +131,23 @@ function getAnalytics($id, $type, $duration) {
         GROUP BY c.id, c.object_id, c.object_name, a.verb
         ORDER BY verb_count DESC
         ";
+
+        $line_query = "
+        SELECT
+            c.id,
+            c.object_id,
+            c.object_name,
+            'Pane' AS object_type,
+            a.verb,
+            $intervalExpression AS time_interval,
+            COUNT(a.id) AS total_count
+        FROM corpus c
+        LEFT JOIN actions a ON c.id = a.object_id
+        WHERE c.object_type = 'Pane' AND c.object_id = :id
+        $dateFilter
+        GROUP BY c.id, c.object_id, c.object_name, a.verb, time_interval
+        ORDER BY a.verb, time_interval
+        ";
     } else {
         echo json_encode(array(
             "data" => null,
@@ -93,34 +157,90 @@ function getAnalytics($id, $type, $duration) {
         return 400;
     }
 
-    $activity_stmt = $conn->prepare($activity_query);
-    $activity_stmt->bindParam(':id', $id);
-    
-    if ($activity_stmt->execute()) {
-        $rows = $activity_stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Process the rows to create an array of objects with verb counts
-        $result = array();
-        foreach ($rows as $row) {
-            $object_id = $row['object_id'];
-            if (!isset($result[$object_id])) {
-                $result[$object_id] = array(
-                    'id' => $row['id'],
-                    'object_id' => $row['object_id'],
-                    'object_name' => $row['object_name'],
-                    'object_type' => $row['object_type'],
+    $pie_stmt = $conn->prepare($pie_query);
+    $pie_stmt->bindParam(':id', $id);
+
+    $line_stmt = $conn->prepare($line_query);
+    $line_stmt->bindParam(':id', $id);
+
+    if ($pie_stmt->execute() && $line_stmt->execute()) {
+        $pie_rows = $pie_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $line_rows = $line_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Process pie data
+        $pie_result = array();
+        foreach ($pie_rows as $row) {
+            $object_id = $row['object_id'] ?? $id;
+            if (!isset($pie_result[$object_id])) {
+                $pie_result[$object_id] = array(
+                    'id' => $row['id'] ?? $object_id,
+                    'object_id' => $object_id,
+                    'object_name' => $row['object_name'] ?? ($type === 'storyfragment' ? 'Story Fragment' : 'Pane'),
+                    'object_type' => $row['object_type'] ?? $type,
                     'total_actions' => 0,
                     'verbs' => array()
                 );
             }
-            if ($row['verb'] !== null) {
-                $result[$object_id]['verbs'][$row['verb']] = intval($row['verb_count']);
-                $result[$object_id]['total_actions'] += intval($row['verb_count']);
+            if (isset($row['verb']) && isset($row['verb_count'])) {
+                $pie_result[$object_id]['verbs'][] = array(
+                    'id' => $row['verb'],
+                    'value' => intval($row['verb_count'])
+                );
+                $pie_result[$object_id]['total_actions'] += intval($row['verb_count']);
             }
         }
-        
-        $final_result = array_values($result);
-        
+
+        // Process line data
+        $line_result = array();
+        foreach ($line_rows as $row) {
+            $object_id = $row['object_id'] ?? $id;
+            if (!isset($line_result[$object_id])) {
+                $line_result[$object_id] = array(
+                    'id' => $row['id'] ?? $object_id,
+                    'object_id' => $object_id,
+                    'object_name' => $row['object_name'] ?? ($type === 'storyfragment' ? 'Story Fragment' : 'Pane'),
+                    'object_type' => $row['object_type'] ?? $type,
+                    'total_actions' => 0,
+                    'verbs' => array()
+                );
+            }
+            if (isset($row['verb']) && isset($row['time_interval']) && isset($row['total_count'])) {
+                $verb = $row['verb'];
+                if (!isset($line_result[$object_id]['verbs'][$verb])) {
+                    $line_result[$object_id]['verbs'][$verb] = array(
+                        'id' => $verb,
+                        'data' => array()
+                    );
+                }
+                $line_result[$object_id]['verbs'][$verb]['data'][] = array(
+                    'x' => intval($row['time_interval']),
+                    'y' => intval($row['total_count'])
+                );
+                $line_result[$object_id]['total_actions'] += intval($row['total_count']);
+            }
+        }
+
+        // Fill in missing intervals with zero counts for line data
+        foreach ($line_result as &$item) {
+            foreach ($item['verbs'] as &$series) {
+                $existing_intervals = array_column($series['data'], 'x');
+                for ($i = 1; $i <= $limit; $i++) {
+                    if (!in_array($i, $existing_intervals)) {
+                        $series['data'][] = array('x' => $i, 'y' => 0);
+                    }
+                }
+                usort($series['data'], function($a, $b) {
+                    return $a['x'] - $b['x'];
+                });
+            }
+            $item['verbs'] = array_values($item['verbs']);
+        }
+
+        $final_result = array(
+            'pie' => array_values($pie_result),
+            'line' => array_values($line_result)
+        );
+
         echo json_encode(array(
             "data" => $final_result,
             "message" => "Success.",
@@ -131,7 +251,7 @@ function getAnalytics($id, $type, $duration) {
         echo json_encode(array(
             "data" => null,
             "message" => "Failed to execute query.",
-            "error" => $activity_stmt->errorInfo()
+            "error" => $pie_stmt->errorInfo() ?: $line_stmt->errorInfo()
         ));
         return 500;
     }
