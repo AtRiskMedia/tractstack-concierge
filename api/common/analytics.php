@@ -7,6 +7,107 @@ define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
 define('STORYKEEP_ROOT', $_ENV['STORYKEEP_ROOT']);
 
+function getDashboardAnalytics($duration = 'weekly') {
+    $databaseService = new DatabaseService();
+    $conn = $databaseService->getConnection();
+    $result = [
+        'stats' => [
+            'daily' => 0,
+            'weekly' => 0,
+            'monthly' => 0
+        ],
+        'line' => [],
+        'hot_story_fragments' => []
+    ];
+
+    // Helper function to get date filter
+    function getDateFilter($duration) {
+        switch ($duration) {
+            case 'daily':
+                return "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)";
+            case 'weekly':
+                return "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+            case 'monthly':
+            default:
+                return "AND a.created_at >= DATE_SUB(NOW(), INTERVAL 28 DAY)";
+        }
+    }
+
+    // Stats query for all durations
+    $stats_query = "
+    SELECT
+        SUM(CASE WHEN a.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) as daily,
+        SUM(CASE WHEN a.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as weekly,
+        SUM(CASE WHEN a.created_at >= DATE_SUB(NOW(), INTERVAL 28 DAY) THEN 1 ELSE 0 END) as monthly
+    FROM actions a
+    WHERE a.verb = 'PAGEVIEWED'";
+    $stats_stmt = $conn->prepare($stats_query);
+    if ($stats_stmt->execute()) {
+        $result['stats'] = $stats_stmt->fetch(PDO::FETCH_ASSOC);
+        // Convert to integers
+        $result['stats'] = array_map('intval', $result['stats']);
+    }
+
+    // Line data query
+    $interval_expression = $duration === 'daily' ? "HOUR" : "DAY";
+    $limit = $duration === 'daily' ? 24 : ($duration === 'weekly' ? 7 : 28);
+    $line_query = "
+    SELECT
+        a.verb,
+        FLOOR(TIMESTAMPDIFF($interval_expression, a.created_at, NOW())) AS time_interval,
+        COUNT(*) AS total_count
+    FROM actions a
+    WHERE 1=1 " . getDateFilter($duration) . "
+    GROUP BY a.verb, time_interval
+    ORDER BY a.verb, time_interval";
+    $line_stmt = $conn->prepare($line_query);
+    if ($line_stmt->execute()) {
+        $line_data = $line_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $result['line'] = processLineData($line_data, $limit);
+    }
+
+    // Hot story fragments query
+    $hot_query = "
+    SELECT
+        c.object_id AS id,
+        COUNT(*) AS total_events
+    FROM actions a
+    JOIN corpus c ON a.object_id = c.id
+    WHERE c.object_type = 'StoryFragment' " . getDateFilter($duration) . "
+    GROUP BY c.object_id
+    ORDER BY total_events DESC
+    LIMIT 5";
+    $hot_stmt = $conn->prepare($hot_query);
+    if ($hot_stmt->execute()) {
+        $result['hot_story_fragments'] = $hot_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    echo json_encode([
+        "data" => $result,
+        "message" => "Success.",
+        "error" => null
+    ]);
+    return 200;
+}
+
+function processLineData($data, $limit) {
+    $result = [];
+    foreach ($data as $row) {
+        $verb = $row['verb'];
+        if (!isset($result[$verb])) {
+            $result[$verb] = [
+                'id' => $verb,
+                'data' => array_fill(0, $limit, ['x' => 0, 'y' => 0])
+            ];
+        }
+        $result[$verb]['data'][$row['time_interval']] = [
+            'x' => intval($row['time_interval']),
+            'y' => intval($row['total_count'])
+        ];
+    }
+    return array_values($result);
+}
+
 function getAnalytics($id, $type, $duration) {
     $databaseService = new DatabaseService();
     $conn = $databaseService->getConnection();

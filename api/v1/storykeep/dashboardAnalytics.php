@@ -5,7 +5,6 @@ include_once '../../common/database.php';
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_secure', 1);
-
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
@@ -33,10 +32,8 @@ if ($provided_secret === $concierge_secret) {
     $method = $_SERVER['REQUEST_METHOD'];
     if ($method === 'GET') {
         // Get the id from the URL parameters
-        $id = isset($_GET['id']) ? $_GET['id'] : null;
-        $type = isset($_GET['type']) ? $_GET['type'] : null;
         $duration = isset($_GET['duration']) ? $_GET['duration'] : null;
-        if( empty($id) || empty($type) || empty($duration) ) {
+        if( empty($duration) ) {
           echo json_encode([
               'success' => false,
               'message' => 'Method not allowed'
@@ -44,7 +41,7 @@ if ($provided_secret === $concierge_secret) {
           http_response_code(405);
 	  die();
 	}		
-        $res = getAnalytics($id, $type, $duration );
+        $res = getDashboardAnalytics($duration );
         http_response_code($res);
     } else {
         echo json_encode([
