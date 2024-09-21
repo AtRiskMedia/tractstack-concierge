@@ -389,6 +389,7 @@ function neo4j_merge_action($neo4j_visit, $neo4j_corpus, $relationship, $score)
       break;
 
     case "ENTERED":
+    case "PAGEVIEWED":
     case "DISCOVERED":
     case "CLICKED":
     case "READ":
