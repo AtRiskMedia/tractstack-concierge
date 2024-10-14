@@ -1,10 +1,11 @@
 <?php
 require "../../../vendor/autoload.php";
-include_once '../../common/analytics.php';
-include_once '../../common/database.php';
+include_once '../../common/publish.php';
+//include_once '../../common/database.php';
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_secure', 1);
+
 // Allow from any origin
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
@@ -30,20 +31,28 @@ $provided_secret = isset($headers['X-Concierge-Secret']) ? $headers['X-Concierge
 
 if ($provided_secret === $concierge_secret) {
     $method = $_SERVER['REQUEST_METHOD'];
-    if ($method === 'GET') {
-        // Get the id from the URL parameters
-        $duration = isset($_GET['duration']) ? $_GET['duration'] : null;
-        if( empty($duration) ) {
-          echo json_encode([
-              'success' => false,
-              'message' => 'Method not allowed'
-          ]);
-          http_response_code(405);
-	  die();
-	}		
-        $res = getDashboardAnalytics($duration );
-        http_response_code($res);
+    if ($method === 'POST') {
+        // Handle POST request
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        $whitelist = isset($data['whitelist']) ? $data['whitelist'] : [];
+        if (!empty($whitelist)) {
+            $res = handleTailwindWhitelist($whitelist );
+            http_response_code($res);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Tailwind whitelist received',
+            ]);
+        }
+        else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid JSON payload'
+            ]);
+            http_response_code(400);
+        }
     } else {
+        // Method not allowed
         echo json_encode([
             'success' => false,
             'message' => 'Method not allowed'
@@ -51,6 +60,7 @@ if ($provided_secret === $concierge_secret) {
         http_response_code(405);
     }
 } else {
+    // The secret doesn't match or wasn't provided
     echo json_encode([
         'success' => false,
         'message' => 'Invalid or missing secret'

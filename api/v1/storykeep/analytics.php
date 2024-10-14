@@ -42,8 +42,8 @@ if ($provided_secret === $concierge_secret) {
               'message' => 'Method not allowed'
           ]);
           http_response_code(405);
-	  die();
-	}		
+	        die();
+	      }
         $res = getAnalytics($id, $type, $duration );
         http_response_code($res);
     } else {
