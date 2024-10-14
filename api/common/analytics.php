@@ -5,7 +5,6 @@ $dotenv->load();
 
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
-define('STORYKEEP_ROOT', $_ENV['STORYKEEP_ROOT']);
 
 function getDashboardAnalytics($duration = 'weekly') {
     $databaseService = new DatabaseService();
