@@ -39,10 +39,6 @@ if ($provided_secret === $concierge_secret) {
         if (!empty($target)) {
             $res = handlePublish($target );
             http_response_code($res);
-            echo json_encode([
-                'success' => true,
-                'message' => 'Restore point triggered',
-            ]);
         }
         else {
             echo json_encode([
