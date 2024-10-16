@@ -34,7 +34,6 @@ if ($provided_secret === $concierge_secret) {
         // Handle POST request
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
-        error_log($json);
         $target = isset($data['target']) ? $data['target'] : [];
         if (!empty($target)) {
             $res = handlePublish($target );
