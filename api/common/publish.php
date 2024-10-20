@@ -12,6 +12,9 @@ function handleFilesUpload($files = []) {
     $filename = removeExtension($file['filename']);
     if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
       $type = strtolower($matches[1]); // This will be 'jpeg', 'png', 'gif', etc.
+      if ($originalExtension === 'jpg' && $type === 'jpeg') {
+        $type = 'jpg';
+      }
       $data = substr($base64Image, strpos($base64Image, ',') + 1);
       if (!in_array($type, ['webp','jpg', 'jpeg', 'gif', 'png'])) {
         return(500);
