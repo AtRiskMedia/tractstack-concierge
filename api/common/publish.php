@@ -6,13 +6,53 @@ $dotenv->load();
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
 
+function handlePaneDesignUpload($files = []) {
+  foreach ($files as $file) {
+    $base64Image = $file['src'];
+    $filename = removeExtension($file['filename']);
+    if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
+      $type = strtolower($matches[1]); // This will be 'jpeg', 'png', 'gif', etc.
+      if (/*$originalExtension === 'jpg' && */ $type === 'jpeg') {
+        $type = 'jpg';
+      }
+      $data = substr($base64Image, strpos($base64Image, ',') + 1);
+      if (!in_array($type, ['webp','jpg', 'jpeg', 'gif', 'png'])) {
+        return(500);
+      }
+      $data = base64_decode($data);
+      if ($data === false) {
+        return(500);
+      }
+      $imagick = new Imagick();
+      $imagick->readImageBlob($data);
+      $sizes = [1500];
+      $subSavePath = 'api/images/paneDesigns/';
+      $savePath = CONCIERGE_ROOT.$subSavePath;
+      createDirectoryIfNotExists($savePath);
+      foreach ($sizes as $size) {
+        $resized = clone $imagick;
+        $resized->resizeImage($size, 0, Imagick::FILTER_LANCZOS, 1);
+        $resized->setImageCompressionQuality(70);
+        $resized->writeImage($savePath . $filename . "." . $type);
+        $resized->clear();
+        $resized->destroy();
+      }
+      $imagick->clear();
+      $imagick->destroy();
+    } else {
+      return(500);
+    }
+  }
+  return(200);
+}
+
 function handleFilesUpload($files = []) {
   foreach ($files as $file) {
     $base64Image = $file['src'];
     $filename = removeExtension($file['filename']);
     if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
       $type = strtolower($matches[1]); // This will be 'jpeg', 'png', 'gif', etc.
-      if ($originalExtension === 'jpg' && $type === 'jpeg') {
+      if (/*$originalExtension === 'jpg' && */ $type === 'jpeg') {
         $type = 'jpg';
       }
       $data = substr($base64Image, strpos($base64Image, ',') + 1);
@@ -27,7 +67,8 @@ function handleFilesUpload($files = []) {
       $imagick->readImageBlob($data);
       $sizes = [1920, 1080, 600];
       $dateString = date("Y-m");
-      $savePath = CONCIERGE_ROOT.'api/images/'.$dateString.'/';
+      $subSavePath = 'api/images/'.$dateString.'/';
+      $savePath = CONCIERGE_ROOT.$subSavePath;
       createDirectoryIfNotExists($savePath);
       foreach ($sizes as $size) {
         $resized = clone $imagick;
@@ -95,7 +136,6 @@ function getSettings()
 {
   $concierge_settings = array(parse_ini_file(CONCIERGE_ROOT.'.env'));
   $front_settings = array(parse_ini_file(FRONT_ROOT.'.env'));
-  error_log(FRONT_ROOT);
   echo json_encode(array(
     "data" => json_encode(
       array_merge(...[...$concierge_settings,
