@@ -90,3 +90,20 @@ function removeExtension($filename) {
     }
     return $filename;
 }
+
+function getSettings()
+{
+  $concierge_settings = array(parse_ini_file(CONCIERGE_ROOT.'.env'));
+  $front_settings = array(parse_ini_file(FRONT_ROOT.'.env'));
+  error_log(FRONT_ROOT);
+  echo json_encode(array(
+    "data" => json_encode(
+      array_merge(...[...$concierge_settings,
+      ...$front_settings])
+    ),
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}
+

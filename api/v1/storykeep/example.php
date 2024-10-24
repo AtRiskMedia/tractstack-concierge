@@ -41,7 +41,6 @@ if ($provided_secret === $concierge_secret) {
             'message' => 'GET request received successfully',
             'slug' => $slug,
             'otherParam' => $otherParam,
-            'secret' => $concierge_secret
         ]);
         http_response_code(200);
     } elseif ($method === 'POST') {
@@ -59,7 +58,6 @@ if ($provided_secret === $concierge_secret) {
                 'success' => true,
                 'message' => 'POST request received successfully',
                 'receivedData' => $data,
-                'secret' => $concierge_secret
             ]);
             http_response_code(200);
         }
