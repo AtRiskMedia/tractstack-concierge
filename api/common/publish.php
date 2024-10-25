@@ -25,7 +25,7 @@ function handlePaneDesignUpload($files = []) {
       }
       $imagick = new Imagick();
       $imagick->readImageBlob($data);
-      $sizes = [1500];
+      $sizes = [800];
       $subSavePath = 'api/images/paneDesigns/';
       $savePath = CONCIERGE_ROOT.$subSavePath;
       createDirectoryIfNotExists($savePath);
