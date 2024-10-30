@@ -95,7 +95,6 @@ function handleTailwindWhitelist($classes = []) {
 function handlePublish($target) {
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
   if( !file_exists($concierge_settings['WATCH_ROOT'].'build.lock')) {
-    //$locked = parse_ini_file($concierge_settings['WATCH_ROOT'].'build.lock');
     file_put_contents($concierge_settings['WATCH_ROOT'].'build.lock', $target);
     echo json_encode(array(
       "data" => json_encode(array(
@@ -204,7 +203,7 @@ function postSettings($payload)
       $front_settings[$key] = $val;
     }
     if( in_array($key, $concierge_keys)) {
-      $concierge_settings[$key] = $val;
+$concierge_settings[$key] = $val;
     }
   }
   file_put_contents($concierge_settings['FRONT_ROOT'].'.env',implode(PHP_EOL, prepareIniFile($front_settings)));
@@ -219,3 +218,15 @@ function postSettings($payload)
   return (200);
 }
 
+function getStatus()
+{
+  $status = json_decode(file_get_contents(CONCIERGE_ROOT.'api/build.json'), true);
+  echo json_encode(array(
+    "data" => json_encode(
+      $status
+    ),
+    "message" => "Success.",
+    "error" => null
+  ));
+  return (200);
+}

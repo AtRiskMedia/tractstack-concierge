@@ -4,7 +4,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__.'/../../');
 $dotenv->load();
 
 define('SECRET_KEY', $_ENV['SECRET_KEY']);
-define('BUILDER_SECRET_KEY', $_ENV['BUILDER_SECRET_KEY']);
+#define('BUILDER_SECRET_KEY', $_ENV['BUILDER_SECRET_KEY']);
 define('DB_HOST', $_ENV['DB_HOST']);
 define('DB_NAME', $_ENV['DB_NAME']);
 define('DB_USER', $_ENV['DB_USER']);
