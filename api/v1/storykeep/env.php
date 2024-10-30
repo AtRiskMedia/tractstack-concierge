@@ -38,7 +38,7 @@ if ($provided_secret === $concierge_secret) {
         $json = file_get_contents('php://input');
         $data = json_decode($json, true);
         if (!empty($data)) {
-            //$http_response_code = postSettings($data);
+            $http_response_code = postSettings($data);
         }
         else {
             echo json_encode([
