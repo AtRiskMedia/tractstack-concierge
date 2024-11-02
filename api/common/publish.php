@@ -189,7 +189,7 @@ function postSettings($payload)
   $front_settings = parse_ini_file(FRONT_ROOT.'.env');
 
   $frontend_keys = ["PRIVATE_SHOPIFY_STOREFRONT_ACCESS_TOKEN","PUBLIC_SHOPIFY_SHOP","PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN","PRIVATE_CONCIERGE_BASE_URL","PUBLIC_CONCIERGE_STYLES_URL",
-    "PUBLIC_SITE_URL","PUBLIC_IMAGE_URL","PUBLIC_SOCIALS","PUBLIC_FOOTER","PUBLIC_HOME","PUBLIC_TRACTSTACK","PUBLIC_IMPRESSIONS_DELAY","PUBLIC_SLOGAN","PRIVATE_OPEN_DEMO",
+    "PUBLIC_SITE_URL","PUBLIC_IMAGE_URL","PUBLIC_SOCIALS","PUBLIC_FOOTER","PUBLIC_HOME","PUBLIC_TRACTSTACK","PUBLIC_IMPRESSIONS_DELAY","PUBLIC_SLOGAN","PRIVATE_OPEN_DEMO","PUBLIC_BRAND",
     "PUBLIC_GOOGLE_SITE_VERIFICATION",
     "PUBLIC_DISABLE_FAST_TRAVEL","PUBLIC_USE_CUSTOM_FONTS","PUBLIC_THEME","TURSO_DATABASE_URL","TURSO_AUTH_TOKEN","HEADER_WIDGET_RESOURCE_CATEGORY","ENABLE_HEADER_WIDGET",
     "PRIVATE_CONCIERGE_SECRET","PRIVATE_AUTH_SECRET","PRIVATE_ASSEMBLYAI_API_KEY"];
@@ -202,9 +202,17 @@ function postSettings($payload)
   foreach ($payload as $key => $val) {
     if( in_array($key, $frontend_keys)) {
       $front_settings[$key] = $val;
+      if ($key === 'PUBLIC_BRAND') {
+        try {
+          updateBrandColors($val, $concierge_settings['FRONT_ROOT']);
+        } catch (Exception $e) {
+          $cssSuccess = false;
+          $cssError = $e->getMessage();
+        }
+      }
     }
     if( in_array($key, $concierge_keys)) {
-$concierge_settings[$key] = $val;
+      $concierge_settings[$key] = $val;
     }
   }
   file_put_contents($concierge_settings['FRONT_ROOT'].'.env',implode(PHP_EOL, prepareIniFile($front_settings)));
@@ -230,4 +238,76 @@ function getStatus()
     "error" => null
   ));
   return (200);
+}
+
+function updateCustomCss($brandColors) {
+    $colors = explode(',', $brandColors);
+    if (count($colors) !== 8) {
+        throw new Exception('Invalid brand colors format');
+    }
+
+    // Build sed commands for each color
+    $sedCommands = array_map(function($index, $color) {
+        $color = ltrim($color);
+        // Simpler pattern that just focuses on the brand color declaration
+        // and anything that follows until the semicolon
+        return "-e 's/--brand-" . ($index + 1) . ":#[0-9a-fA-F]\\{3,6\\}[^;]*;/--brand-" . ($index + 1) . ":#" . $color . ";/'";
+    }, range(0, 7), $colors);
+
+    // Combine into single sed command
+    $sedCommand = "sed -i " . implode(' ', $sedCommands);
+    
+    return $sedCommand;
+}
+
+function updateBrandColors($brandColors, $frontRoot) {
+    try {
+        $cssPath = $frontRoot . 'public/styles/custom.css';
+        
+        // Verify file exists and is writable
+        if (!file_exists($cssPath)) {
+            throw new Exception("custom.css not found at: $cssPath");
+        }
+        if (!is_writable($cssPath)) {
+            throw new Exception("custom.css is not writable at: $cssPath");
+        }
+
+        // Create backup of CSS file
+        $backupPath = $cssPath . '.bak';
+        if (!copy($cssPath, $backupPath)) {
+            throw new Exception("Failed to create backup of custom.css");
+        }
+
+        // Get and execute sed command
+        $sedCommand = updateCustomCss($brandColors);
+        $sedCommand .= " " . escapeshellarg($cssPath);
+        
+        $output = array();
+        $returnVar = 0;
+        exec($sedCommand . " 2>&1", $output, $returnVar);
+
+        if ($returnVar !== 0) {
+            // Restore from backup if sed failed
+            copy($backupPath, $cssPath);
+            throw new Exception("Sed command failed: " . implode("\n", $output));
+        }
+
+        // Verify the changes
+        $newContent = file_get_contents($cssPath);
+        $colors = explode(',', $brandColors);
+        foreach ($colors as $index => $color) {
+            $color = ltrim($color);
+            if (strpos($newContent, "--brand-" . ($index + 1) . ":#" . $color . ";") === false) {
+                // Restore from backup if verification fails
+                copy($backupPath, $cssPath);
+                throw new Exception("Color verification failed for brand-" . ($index + 1));
+            }
+        }
+
+        unlink($backupPath); // Remove backup if everything succeeded
+        return true;
+    } catch (Exception $e) {
+        error_log("Failed to update custom.css: " . $e->getMessage());
+        throw $e;
+    }
 }
