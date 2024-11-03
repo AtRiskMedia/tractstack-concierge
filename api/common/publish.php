@@ -6,6 +6,77 @@ $dotenv->load();
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
 
+function handleFrontendFilesUpload($files = []) {
+  foreach ($files as $file) {
+    $base64Image = $file['src'];
+    $filename = $file['filename'];  // This will be 'logo', 'wordmark', etc.
+
+    // Extract the mime type and handle svg+xml specially
+    if (preg_match('/^data:(image|application)\/([^;]+);base64,/', $base64Image, $matches)) {
+      $mimeGroup = $matches[1];
+      $mimeType = strtolower($matches[2]);
+      
+      // Determine file extension
+      $extension = match($mimeType) {
+        'svg+xml' => 'svg',
+        'vnd.microsoft.icon' => 'ico',
+        'jpeg' => 'jpg',
+        default => $mimeType
+      };
+
+      // Extract base64 data
+      $data = substr($base64Image, strpos($base64Image, ',') + 1);
+      $data = base64_decode($data);
+      if ($data === false) {
+        error_log("Failed to decode base64 data for {$filename}");
+        return 500;
+      }
+
+      $subSavePath = 'custom/';
+      $savePath = FRONT_ROOT.'public/'.$subSavePath;
+      createDirectoryIfNotExists($savePath);
+      $fullPath = $savePath . $filename . '.' . $extension;
+
+      // Handle SVGs and ICO files directly - no processing needed
+      if ($extension === 'svg' || $extension === 'ico') {
+        if (file_put_contents($fullPath, $data) === false) {
+          error_log("Failed to write {$extension} file: {$fullPath}");
+          return 500;
+        }
+        continue;
+      }
+
+      // Process images with Imagick
+      try {
+        $imagick = new Imagick();
+        $imagick->readImageBlob($data);
+
+        // For OG image, maintain aspect ratio but ensure correct size
+        if ($filename === 'og') {
+          $imagick->resizeImage(1200, 630, Imagick::FILTER_LANCZOS, 1, true);
+        }
+        // For OG Logo, ensure it's square and at least 200x200
+        else if ($filename === 'oglogo') {
+          $size = max($imagick->getImageWidth(), $imagick->getImageHeight(), 200);
+          $imagick->resizeImage($size, $size, Imagick::FILTER_LANCZOS, 1, true);
+        }
+        
+        $imagick->setImageCompressionQuality(85);
+        $imagick->writeImage($fullPath);
+        $imagick->clear();
+        $imagick->destroy();
+      } catch (Exception $e) {
+        error_log("Imagick error processing {$filename}: " . $e->getMessage());
+        return 500;
+      }
+    } else {
+      error_log("Invalid base64 image format for {$filename}");
+      return 500;
+    }
+  }
+  return 200;
+}
+
 function handlePaneDesignUpload($files = []) {
   foreach ($files as $file) {
     $base64Image = $file['src'];
