@@ -121,7 +121,20 @@ function handleFilesUpload($files = []) {
   foreach ($files as $file) {
     $base64Image = $file['src'];
     $filename = removeExtension($file['filename']);
-    if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
+    if (preg_match('/^data:image\/svg\+xml;base64,/', $base64Image)) {
+      $data = substr($base64Image, strpos($base64Image, ',') + 1);
+      $data = base64_decode($data);
+      if ($data === false) {
+        return(500);
+      }
+      $dateString = date("Y-m");
+      $subSavePath = 'api/images/'.$dateString.'/';
+      $savePath = CONCIERGE_ROOT.$subSavePath;
+      createDirectoryIfNotExists($savePath);
+      if (file_put_contents($savePath . $filename . '.svg', $data) === false) {
+        return(500);
+      } 
+    } else if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $matches)) {
       $type = strtolower($matches[1]); // This will be 'jpeg', 'png', 'gif', etc.
       if (/*$originalExtension === 'jpg' && */ $type === 'jpeg') {
         $type = 'jpg';
