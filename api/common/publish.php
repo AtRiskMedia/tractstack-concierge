@@ -129,13 +129,15 @@ function postSettings($payload)
 
 function getStatus()
 {
-  $status = json_decode(file_get_contents(CONCIERGE_ROOT.'api/build.json'), true);
-  echo json_encode(array(
-    "data" => json_encode(
-      $status
-    ),
-    "message" => "Success.",
-    "error" => null
-  ));
-  return (200);
+    $buildStatus = json_decode(file_get_contents(CONCIERGE_ROOT . 'api/build.json'), true);
+    $conciergeData = json_decode(file_get_contents(CONCIERGE_ROOT . 'concierge.json'), true);
+    $storykeepData = json_decode(file_get_contents(FRONT_ROOT . 'storykeep.json'), true);
+    $combinedData = array_merge($buildStatus, $conciergeData, $storykeepData);
+    echo json_encode(array(
+        "data" => $combinedData,
+        "message" => "Success.",
+        "error" => null
+    ));
+    return 200;
 }
+
