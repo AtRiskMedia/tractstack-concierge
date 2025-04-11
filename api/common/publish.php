@@ -5,6 +5,7 @@ $dotenv->load();
 
 define('CONCIERGE_ROOT', $_ENV['CONCIERGE_ROOT']);
 define('FRONT_ROOT', $_ENV['FRONT_ROOT']);
+define('STORYKEEP_ROOT', $_ENV['STORYKEEP_ROOT']);
 
 function handlePublish($target) {
   $concierge_settings = parse_ini_file(CONCIERGE_ROOT.'.env');
@@ -129,15 +130,43 @@ function postSettings($payload)
 
 function getStatus()
 {
-    $buildStatus = json_decode(file_get_contents(CONCIERGE_ROOT . 'api/build.json'), true);
-    $conciergeData = json_decode(file_get_contents(CONCIERGE_ROOT . 'concierge.json'), true);
-    $storykeepData = json_decode(file_get_contents(FRONT_ROOT . 'storykeep.json'), true);
-    $combinedData = array_merge($buildStatus, $conciergeData, $storykeepData);
-    echo json_encode(array(
+    // Initialize the combined data array
+    $combinedData = [];
+
+    // Read and decode build.json
+    $buildFile = CONCIERGE_ROOT . 'api/build.json';
+    if (file_exists($buildFile)) {
+        $buildStatus = json_decode(file_get_contents($buildFile), true);
+        if (is_array($buildStatus)) {
+            $combinedData = array_merge($combinedData, $buildStatus);
+        }
+    }
+
+    // Read and decode concierge.json
+    $conciergeFile = CONCIERGE_ROOT . 'concierge.json';
+    if (file_exists($conciergeFile)) {
+        $conciergeData = json_decode(file_get_contents($conciergeFile), true);
+        if (is_array($conciergeData)) {
+            $combinedData = array_merge($combinedData, $conciergeData);
+        }
+    }
+
+    // Read and decode storykeep.json
+    $storykeepFile = STORYKEEP_ROOT . 'storykeep.json';
+    if (file_exists($storykeepFile)) {
+        $storykeepData = json_decode(file_get_contents($storykeepFile), true);
+        if (is_array($storykeepData)) {
+            $combinedData = array_merge($combinedData, $storykeepData);
+        }
+    }
+
+    // Prepare the response
+    $response = [
         "data" => $combinedData,
         "message" => "Success.",
         "error" => null
-    ));
+    ];
+
+    echo json_encode($response);
     return 200;
 }
-
