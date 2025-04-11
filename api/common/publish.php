@@ -162,7 +162,7 @@ function getStatus()
 
     // Prepare the response
     $response = [
-        "data" => $combinedData,
+        "data" => json_encode($combinedData),
         "message" => "Success.",
         "error" => null
     ];
